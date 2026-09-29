@@ -1,0 +1,85 @@
+<!doctype html><html><body style="margin:0">
+<iframe id="f" style="position:fixed;left:0;top:0;border:0"></iframe>
+<script>
+const q = new URLSearchParams(location.search), plan = q.get('plan') || 'hub';
+const f = document.getElementById('f'); f.style.width = (q.get('w0') || innerWidth) + 'px'; f.style.height = (q.get('h0') || innerHeight) + 'px';
+if (q.get('lang')) localStorage.setItem('paperSchool.v1', JSON.stringify({ lang: q.get('lang') }));
+f.src = '../index.html?test&drive&auto' + (plan !== 'hub' ? '#' + plan : '');
+const A = () => f.contentWindow.__app, sleep = ms => new Promise(r => setTimeout(r, ms));
+const until = async fn => { for (let i = 0; i < 400 && !fn(); i++) await sleep(50); };
+const drop = (key, target) => { const p = A().spawnFromTray(key); A().current().dragOpts().onDrop(p, target); };
+const dig = n => String(n).split('').reverse().map(Number);
+document.title = 'harness-start'; let ticks = 0; setInterval(() => { ticks++; if (!document.title.startsWith('{')) document.title = 'ticks ' + ticks + ' app=' + !!A() + ' cur=' + (A() && A().current() ? A().current().id : '-'); }, 500);
+(async () => {
+  await until(() => A() && A().current() && A().current().id === plan);
+  setInterval(() => { if (A()) A().S.lastAct = A().S.time; }, 100);
+  setInterval(() => { try { const c = A().colState, b = A().blkState; document.title = JSON.stringify({ t: +A().S.time.toFixed(1), cur: A().current().id, busy: c.busy, active: c.active, P: c.P && (c.P.a + c.P.op + c.P.b), bb: b.busy, N: b.N, counts: b.counts, say: f.contentWindow.document.getElementById('bubbleText').textContent.slice(0, 90) }); } catch (e) { document.title = 'E ' + e.message; } }, 200);
+  const C = () => A().colState, B = () => A().blkState, stop = async ms => { await sleep(ms); f.contentWindow.__pause = true; };
+  try {
+    if (plan === 'hub' && q.get('nav')) {
+      const seq = ['sums', 'hub', 'minus', 'blocks', 'hub', 'sums', 'blocks', 'minus', 'hub'];
+      for (const id of seq) {
+        await A().go(id); await sleep(700);
+        if (id === 'sums' || id === 'minus') { A().current().setLevel(3); await sleep(500); }
+        if (id === 'blocks') { A().current().help(); await sleep(300); }
+        if (id === 'minus') f.contentWindow.document.getElementById('mLang').click();
+      }
+      await sleep(800);
+      console.log('NAV DONE ' + A().current().id + ' lang=' + f.contentWindow.document.documentElement.lang);
+      return stop(300);
+    }
+    if (plan === 'hub') return stop(+q.get('w') || 1500);
+    const K = () => A().clockState, Fr = () => A().fracState, Fl = () => A().flagsState;
+    const ready = () => plan === 'blocks' ? B().mat && !B().busy : plan === 'clock' ? K().clock && !K().busy : plan === 'frac' ? Fr().stage && !Fr().busy
+      : plan === 'flags' ? Fl().map && !Fl().busy : C().board && !C().busy && C().P;
+    await until(ready);
+    if (q.get('level')) { A().current().setLevel(+q.get('level')); await sleep(300); await until(ready); }
+    if (q.get('round')) { const st = plan === 'frac' ? Fr() : B(); st.rounds = +q.get('round'); st.restart(); await sleep(300); await until(ready); }
+    if (q.get('read')) { B().rounds = 1; B().restart(); await sleep(300); await until(ready); }
+    for (const s of (q.get('steps') || '').split(',').filter(Boolean)) {
+      if (s === 'h') A().current().help();
+      else if (s === 'wait') await until(ready);
+      else if (plan === 'clock') {
+        const k = K();
+        if (s === 'ready') A().current().pointer({ userData: { kind: 'clkReady' } }, {});
+        if (s === 'cheat') { k.T = k.target; A().current().pointer({ userData: { kind: 'clkReady' } }, {}); }
+        if (s === 'rok') drop('t' + k.target, A().current().dragOpts().targets()[0]);
+        if (s === 'rbad') drop(A().trayKeys().find(x => x !== 't' + k.target), A().current().dragOpts().targets()[0]);
+      }
+      else if (plan === 'frac') {
+        const fr = Fr(), tg = A().current().dragOpts().targets();
+        if (fr.mode === 'make') { if (s === 'ok' || s === 'over') drop('slice', tg[0]); }
+        else { const sl = fr.slots.find(x => !x.tile); if (s === 'ok') drop('d' + (sl.which === 'n' ? fr.n : fr.d), sl); if (s === 'bad') drop('d' + ((sl.which === 'n' ? fr.n : fr.d) % 9 + 1), sl); }
+      }
+      else if (plan === 'flags') {
+        const fl = Fl(), tg = A().current().dragOpts().targets();
+        if (fl.level === 1) drop(s === 'ok' ? 'f' + fl.cur.id : A().trayKeys().find(x => x !== 'f' + fl.cur.id), tg[0]);
+        if (fl.level === 2) drop('f' + fl.cur.id, tg.find(t => (t.cont === fl.cur.cont) === (s === 'ok')));
+        if (fl.level === 3) { const pin = fl.pins.find(p => !p.planted); const other = fl.pins.find(p => !p.planted && p !== pin); drop('f' + (s === 'ok' ? pin.c.id : other.c.id), pin); }
+      }
+      else if (plan === 'blocks') {
+        const t = dig(B().N); while (t.length < B().cols) t.push(0);
+        if (B().mode === 'build') {
+          if (s === 'ok') { const p = [2, 1, 0].find(p => p < B().cols && B().counts[p] < t[p]); if (p !== undefined) drop('p' + p, B().mat.cols[p]); }
+          if (s === 'bad') drop('p0', B().mat.cols[1]);
+          if (s === 'over') drop('p0', B().mat.cols[0]);
+        } else {
+          const sl = B().slots.slice().reverse().find(x => !x.tile);
+          if (s === 'ok') drop('d' + t[sl.p], sl);
+          if (s === 'bad') drop('d' + ((t[sl.p] + 3) % 10), sl);
+        }
+      } else {
+        const c = C(), P = c.P, b = c.board, a = c.active;
+        if (s === 'ok') {
+          if (P.op === '-' && P.borrow[a] && !c.borrowed[a]) A().current().pointer(b.top[a + 1].mesh, {});
+          else if (!b.answer[a].tile) drop('d' + (P.op === '+' ? P.dS[a] : P.topAfter[a] - (P.dB[a] || 0)), b.answer[a]);
+          else drop('d1', b.carry[a + 1]);
+        }
+        if (s === 'bad') drop('d' + (((P.op === '+' ? P.dS[a] : P.topAfter[a] - (P.dB[a] || 0)) + 4) % 10), b.answer[a]);
+      }
+      await sleep(+q.get('gap') || 450);
+    }
+    return stop(+q.get('w') || 800);
+  } catch (e) { console.log('HARNESS ERR ' + e.stack); }
+})();
+</script></body></html>
