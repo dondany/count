@@ -3,7 +3,7 @@
 <script>
 const q = new URLSearchParams(location.search), plan = q.get('plan') || 'hub';
 const f = document.getElementById('f'); f.style.width = (q.get('w0') || innerWidth) + 'px'; f.style.height = (q.get('h0') || innerHeight) + 'px';
-if (q.get('lang')) localStorage.setItem('paperSchool.v1', JSON.stringify({ lang: q.get('lang') }));
+if (q.get('lang')) localStorage.setItem('paperSchool.v1', JSON.stringify({ lang: q.get('lang'), stars: { sums: +(q.get('stars') || 0) }, stickers: (q.get('owned') || '').split(',').filter(Boolean) }));
 f.src = '../index.html?test&drive&auto' + (plan !== 'hub' ? '#' + plan : '');
 const A = () => f.contentWindow.__app, sleep = ms => new Promise(r => setTimeout(r, ms));
 const until = async fn => { for (let i = 0; i < 400 && !fn(); i++) await sleep(50); };
@@ -17,7 +17,7 @@ document.title = 'harness-start'; let ticks = 0; setInterval(() => { ticks++; if
   const C = () => A().colState, B = () => A().blkState, stop = async ms => { await sleep(ms); f.contentWindow.__pause = true; };
   try {
     if (plan === 'hub' && q.get('nav')) {
-      const seq = ['sums', 'hub', 'minus', 'blocks', 'hub', 'sums', 'blocks', 'minus', 'hub'];
+      const seq = ['sums', 'words', 'hub', 'animals', 'stickers', 'flags', 'clock', 'frac', 'minus', 'blocks', 'words', 'hub'];
       for (const id of seq) {
         await A().go(id); await sleep(700);
         if (id === 'sums' || id === 'minus') { A().current().setLevel(3); await sleep(500); }
@@ -29,9 +29,11 @@ document.title = 'harness-start'; let ticks = 0; setInterval(() => { ticks++; if
       return stop(300);
     }
     if (plan === 'hub') return stop(+q.get('w') || 1500);
+    const Wd = () => A().wordsState, An = () => A().animalsState;
     const K = () => A().clockState, Fr = () => A().fracState, Fl = () => A().flagsState;
     const ready = () => plan === 'blocks' ? B().mat && !B().busy : plan === 'clock' ? K().clock && !K().busy : plan === 'frac' ? Fr().stage && !Fr().busy
-      : plan === 'flags' ? Fl().map && !Fl().busy : C().board && !C().busy && C().P;
+      : plan === 'flags' ? Fl().map && !Fl().busy : plan === 'words' ? Wd().board && !Wd().busy : plan === 'animals' ? An().map && !An().busy
+      : plan === 'stickers' ? true : C().board && !C().busy && C().P;
     await until(ready);
     if (q.get('level')) { A().current().setLevel(+q.get('level')); await sleep(300); await until(ready); }
     if (q.get('round')) { const st = plan === 'frac' ? Fr() : B(); st.rounds = +q.get('round'); st.restart(); await sleep(300); await until(ready); }
@@ -39,6 +41,19 @@ document.title = 'harness-start'; let ticks = 0; setInterval(() => { ticks++; if
     for (const s of (q.get('steps') || '').split(',').filter(Boolean)) {
       if (s === 'h') A().current().help();
       else if (s === 'wait') await until(ready);
+      else if (plan === 'words') {
+        const w = Wd(), sl = w.slots.find(x => !x.tile); if (!sl) continue;
+        const l = w.letters.find(x => !x.used && (s === 'ok' ? x.ch === sl.ch : x.ch !== sl.ch));
+        if (l) drop('l' + l.k, sl);
+      }
+      else if (plan === 'animals') {
+        const an = An(), a = an.cur || an.loose[0], tg = A().current().dragOpts().targets();
+        drop('a' + a.id, tg.find(t => (t.cont === a.cont) === (s === 'ok')));
+      }
+      else if (plan === 'stickers') {
+        if (s === 'buy') A().current().pointer({ userData: { kind: 'pack' } }, {});
+        if (s === 'next') A().current().pointer({ userData: { kind: 'arrow', dir: 1, j: { punch() {} } } }, {});
+      }
       else if (plan === 'clock') {
         const k = K();
         if (s === 'ready') A().current().pointer({ userData: { kind: 'clkReady' } }, {});

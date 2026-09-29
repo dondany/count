@@ -10,6 +10,9 @@ Playful, paper-cut-out maths games for kids aged 5–9, built with three.js. Eng
 - **Tens & ones** (`#blocks`): place value with paper blocks. *Build* rounds: drag hundreds, tens and ones onto the mat (10 ones swap into a ten automatically). *Read* rounds: count the blocks and write the number. Number words in both languages.
 - **Clock** (`#clock`): *set* rounds — drag the paper hands (the long hand clicks in 5-minute steps and drags the hour hand along like real gears), then press Ready; *read* rounds — drag the matching digital time onto the clock. Levels: o'clock · half & quarter · 5 minutes. Times in words ("quarter past 3", "wpół do czwartej").
 - **Fractions** (`#frac`): *make* rounds — drag pizza slices or chocolate pieces onto the plate; *read* rounds — count the pieces and write the fraction with digit tiles. Fractions in words ("three quarters", "trzy czwarte").
+- **Words** (`#words`): look at a paper picture, listen to Pip and spell the word with letter tiles (Polish letters included). Levels: trace the letters · spell · long words with decoy letters.
+- **Animals** (`#animals`): drag 17 paper animals (kangaroo, panda, żubr…) onto the continent where they live.
+- **Stickers** (`#stickers`): spend stars on sticker packs and fill a 40-sticker album; tap a sticker to hear its name.
 - **Flags** (`#flags`): a paper world map with ~40 countries. Flags: drag the right flag onto a country's pin · Continents: drag a flag onto its continent · World: match several "?" pins to their flags. Pip tells you the continent and capital each time.
 
 Help is layered everywhere: Pip explains, the 💡 button first counts things out with you, then makes the right piece glow; stars (1–3 per task) are saved in the browser.
@@ -37,7 +40,8 @@ engine/           shared by every activity
   audio.js        synthesized sounds + read-aloud
   i18n.js         EN/PL strings, plurals, number words   store.js  saved progress
   world.js        sky, sun, hills, trees
-games/            hub.js, column.js (adding + taking away), blocks.js, panel.js (ten-frames)
+games/            hub.js, column.js (adding + taking away), blocks.js, clock.js, fractions.js, flags.js, words.js,
+                  animals.js, stickers.js; shared: panel.js (ten-frames), worldMap.js, pictures.js, flagsData.js
 dev/test.html     headless test harness (drives the games via ?test&drive hooks)
 ```
 

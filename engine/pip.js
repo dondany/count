@@ -62,11 +62,12 @@ export function buildPip() {
 export function owlHop(a = 1) { pip.hop.vel += 7 * a; pip.body.punch(-0.3 * a); }
 export function owlCheer() { pip.flap = 1.5; owlHop(1.3); setTimeout(() => owlHop(1), 420); }
 export function owlTilt() { pip.body.rot.vel += 4.5; }
-export function say(html, { voice = true, hop = true } = {}) {
-  pip.lastSay = html; bubbleText.innerHTML = html; bubble.classList.add('show');
+// speech: optional different text to read aloud (e.g. say a word without showing its spelling)
+export function say(html, { voice = true, hop = true, speech = null } = {}) {
+  pip.lastSay = html; pip.lastSpeech = speech; bubbleText.innerHTML = html; bubble.classList.add('show');
   bubbleText.classList.remove('pop'); void bubbleText.offsetWidth; bubbleText.classList.add('pop');
   if (hop) owlHop(0.7);
-  if (voice) speak(html);
+  if (voice) speak(speech || html);
 }
 function updatePip(dt, t) {
   const L = S.L; pip.hop.step(dt);

@@ -14,10 +14,13 @@ import { blocksGame, blkState } from './games/blocks.js';
 import { clockGame, clockState } from './games/clock.js';
 import { fracGame, fracState } from './games/fractions.js';
 import { flagsGame, flagsState } from './games/flags.js';
+import { wordsGame, wordsState } from './games/words.js';
+import { animalsGame, animalsState } from './games/animals.js';
+import { stickersGame } from './games/stickers.js';
 import { hub } from './games/hub.js';
 
 const $ = s => document.querySelector(s);
-const GAMES = { sums: sumsGame, minus: minusGame, blocks: blocksGame, clock: clockGame, frac: fracGame, flags: flagsGame };
+const GAMES = { sums: sumsGame, minus: minusGame, blocks: blocksGame, clock: clockGame, frac: fracGame, flags: flagsGame, words: wordsGame, animals: animalsGame, stickers: stickersGame };
 let current = null, switching = false;
 
 /* ---------- switching activities (with #hash links you can share) ---------- */
@@ -46,7 +49,7 @@ addEventListener('hashchange', fromHash);
 setPointerHandler((o, e) => {
   if (!current || switching) return;
   const k = o && o.userData.kind;
-  if (k === 'owl') { owlHop(1); sfx.hoot(); if (pip.lastSay) say(pip.lastSay, { hop: false }); return; }
+  if (k === 'owl') { owlHop(1); sfx.hoot(); if (pip.lastSay) say(pip.lastSay, { hop: false, speech: pip.lastSpeech }); return; }
   if (k === 'tray') {
     if (current.canDrag()) startDrag(spawnFromTray(o.userData.key), e, current.dragOpts());
     else o.userData.j.punch(0.3);
@@ -122,7 +125,7 @@ async function boot() {
   const play = $('#play'); play.disabled = false; play.textContent = tr('play');
   play.addEventListener('click', start);
   // test hooks: ?test exposes the app, ?drive steps the simulation from timers, ?auto skips the title screen
-  if (q.has('test')) { store.voice = false; window.__app = { go, S, games: GAMES, hub, current: () => current, colState, blkState, clockState, fracState, flagsState, spawnFromTray, trayKeys: () => tray ? tray.items.map(i => i.key) : [] }; }
+  if (q.has('test')) { store.voice = false; window.__app = { go, S, games: GAMES, hub, current: () => current, colState, blkState, clockState, fracState, flagsState, wordsState, animalsState, spawnFromTray, trayKeys: () => tray ? tray.items.map(i => i.key) : [] }; }
   if (q.has('drive')) setInterval(() => { if (!window.__pause) manualStep(3); }, 30);
   if (q.has('auto')) start();
 }

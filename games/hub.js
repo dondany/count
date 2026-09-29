@@ -9,6 +9,8 @@ import { store } from '../engine/store.js';
 import { say, owlTilt } from '../engine/pip.js';
 import { setTray } from '../engine/tray.js';
 import { setPencil } from '../engine/pencil.js';
+import { ANIMALS } from './pictures.js';
+import { ALL_STICKERS } from './stickers.js';
 
 const CW = 4.2, CH = 5.6;
 const big = (ctx, P, s, x, c) => text(ctx, P, s, x, 0.1, 1.55, c);
@@ -46,6 +48,18 @@ const CARDS = [
     ctx.fillStyle = '#8a5a3b'; ctx.fillRect(0.9, -1.25, 0.07, 1.5);
     ctx.beginPath(); ctx.rect(0.97, -1.25, 0.7, 0.24); paint(ctx, P, '#ffffff'); ctx.beginPath(); ctx.rect(0.97, -1.01, 0.7, 0.24); paint(ctx, P, '#dc143c');
   } },
+  { id: 'words', name: 'gWords', bg: '#f9e3b4', draw: (ctx, P) => {
+    [['A', -1.0, '#e8574a', -0.15], ['B', 0, '#3f7fc1', 0.1], ['C', 1.0, '#6fae52', -0.05]].forEach(([ch, x, col, r]) => {
+      ctx.save(); ctx.translate(x, 0.1); ctx.rotate(r); rr(ctx, -0.45, -0.55, 0.9, 1.1, 0.12); paint(ctx, P, '#fffaf0'); text(ctx, P, ch, 0, 0, 0.8, col); ctx.restore();
+    });
+  } },
+  { id: 'animals', name: 'gAnimals', bg: '#cde6f5', draw: (ctx, P) => { ctx.save(); ctx.scale(0.85, 0.85); ANIMALS.find(a => a.id === 'panda').draw(ctx, P); ctx.restore(); } },
+  { id: 'stickers', name: 'gStickers', bg: '#f9d3dc', stat: () => `${store.stickers.length} / ${ALL_STICKERS.length}`, draw: (ctx, P) => {
+    for (const [x, y, id, r] of [[-0.75, -0.3, 'a:koala', -0.2], [0.7, -0.35, 'w:sun', 0.15], [0, 0.5, 'a:lion', 0.05]]) {
+      ctx.save(); ctx.translate(x, y); ctx.rotate(r); ctx.beginPath(); ctx.arc(0, 0, 0.62, 0, Math.PI * 2); paint(ctx, P, '#fffdf8');
+      ctx.scale(0.38, 0.38); ALL_STICKERS.find(s => s.id === id).draw(ctx, P); ctx.restore();
+    }
+  } },
 ];
 
 let H = null;
@@ -65,14 +79,14 @@ function drawCard(c) {
     if (c.locked) text(ctx, P, tr('soon'), 0, 2.05, 0.4, '#9a7a62', { weight: 600, shadow: false });
     else {
       ctx.save(); ctx.translate(-0.45, 2.02); starPath(ctx, 5, 0.3, 0.14); paint(ctx, P, '#f2c14e'); ctx.restore();
-      text(ctx, P, String(store.stars[c.id] || 0), 0.3, 2.05, 0.46, INK, { weight: 700 });
+      text(ctx, P, c.stat ? c.stat() : String(store.stars[c.id] || 0), c.stat ? 0.5 : 0.3, 2.05, 0.46, INK, { weight: 700 });
     }
   };
 }
-// [x, y, scale]: a 3×2 grid on wide screens, 2 columns on phones
+// [x, y, scale]: a 5×2 grid on wide screens, 3×3 on phones
 function positions() {
-  if (S.L.name === 'wide') return CARDS.map((c, i) => [((i % 3) - 1) * 4.5 + 0.6, 2.3 - Math.floor(i / 3) * 5.15, 0.86]);
-  return CARDS.map((c, i) => { const r = Math.floor(i / 2), last = i === CARDS.length - 1 && CARDS.length % 2; return [last ? 0 : (i % 2 ? 2.85 : -2.85), 4.5 - r * 6.1, 1]; });
+  if (S.L.name === 'wide') return CARDS.map((c, i) => [((i % 5) - 2) * 3.35 + 0.9, 1.95 - Math.floor(i / 5) * 4.5, 0.72]);
+  return CARDS.map((c, i) => [((i % 3) - 1) * 3.8, 5.4 - Math.floor(i / 3) * 5.05, 0.84]);
 }
 function build() {
   destroy();

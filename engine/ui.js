@@ -4,12 +4,12 @@ import { Juicy, tween, wait, lerp, ease, pick, rand, mulberry } from './util.js'
 import { cutMesh, cutShared, sharedMesh, paint, text, tornRect, starPath } from './paper.js';
 import { scene, S, burst, screenToWorld } from './core.js';
 import { sfx } from './audio.js';
-import { addStars, totalStars } from './store.js';
+import { addStars, spendableStars } from './store.js';
 import { tr } from './i18n.js';
 
 const $ = s => document.querySelector(s);
-export function refreshStars() { $('#starCount').textContent = totalStars(); }
-function bumpStars() { const el = $('#stars'); el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump'); }
+export function refreshStars() { $('#starCount').textContent = spendableStars(); }
+export function bumpStars() { const el = $('#stars'); el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump'); }
 export function setLevels(levels, current, onPick) {
   const box = $('#levels'); box.innerHTML = '';
   for (const l of levels || []) {
