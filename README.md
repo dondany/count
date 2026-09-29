@@ -13,7 +13,18 @@ Playful, paper-cut-out maths games for kids aged 5–9, built with three.js. Eng
 - **Words** (`#words`): look at a paper picture, listen to Pip and spell the word with letter tiles (Polish letters included). Levels: trace the letters · spell · long words with decoy letters.
 - **Animals** (`#animals`): drag 17 paper animals (kangaroo, panda, żubr…) onto the continent where they live.
 - **Stickers** (`#stickers`): spend stars on sticker packs and fill a 40-sticker album; tap a sticker to hear its name.
+- **Times garden** (`#times`): multiplication as rows of paper flowers — plant 3 rows of 4, count on in 4s (4, 8, 12), write the answer. Levels: ×2 ×5 ×10 · ×2–×5 · ×6–×9.
+- **Solar system** (`#space`): put eight smiling planets in order from the Sun (with ghost hints · without · planet quiz), with a fact for each.
+- **Pattern train** (`#pattern`): finish the pattern on the wagons — shapes and colours, trickier patterns, then number patterns (2, 4, 6, ?).
+- **Paper scene** (`#scene`): free play — drag pictures and collected stickers onto a paper landscape, tap to resize, snap a "photo". Saved on the device.
 - **Flags** (`#flags`): a paper world map with ~40 countries. Flags: drag the right flag onto a country's pin · Continents: drag a flag onto its continent · World: match several "?" pins to their flags. Pip tells you the continent and capital each time.
+
+The hub groups activities into **Maths**, **World & words** and **Play**.
+
+**Grown-up features**
+- **Parent corner** (⚙️ menu, behind a grown-up maths question): rounds, stars and level per activity, and the most common mistakes (e.g. "forgets the carried 1").
+- **Adaptive difficulty**: three 3-star rounds in a row move a game up a level, two 1-star rounds move it down (can be switched off in the parent corner). Each game remembers its level.
+- **Daily challenge**: a different activity each day; win 3 rounds of it for a free sticker pack.
 
 Help is layered everywhere: Pip explains, the 💡 button first counts things out with you, then makes the right piece glow; stars (1–3 per task) are saved in the browser.
 
@@ -39,9 +50,11 @@ engine/           shared by every activity
   tray.js         strip of draggable pieces  ui.js      banner/stars, page wipe
   audio.js        synthesized sounds + read-aloud
   i18n.js         EN/PL strings, plurals, number words   store.js  saved progress
+  stats.js        round stats, mistakes, adaptive levels, daily challenge
   world.js        sky, sun, hills, trees
 games/            hub.js, column.js (adding + taking away), blocks.js, clock.js, fractions.js, flags.js, words.js,
-                  animals.js, stickers.js; shared: panel.js (ten-frames), worldMap.js, pictures.js, flagsData.js
+                  animals.js, stickers.js, times.js, space.js, pattern.js, scene.js;
+                  shared: panel.js (ten-frames), worldMap.js, pictures.js, flagsData.js
 dev/test.html     headless test harness (drives the games via ?test&drive hooks)
 ```
 

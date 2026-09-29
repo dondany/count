@@ -94,6 +94,7 @@ function buildSide() {
   const btn = cutMesh(3.2, 1.3, (ctx, P) => {
     rr(ctx, -1.6, -0.65, 3.2, 1.3, 0.35); paint(ctx, P, '#2f9e97');
     if (P.rim) return;
+    if (store.freePacks > 0) { text(ctx, P, `🎁 ${tr('stkFree')}`, 0, 0, 0.5, '#fffaf0', { maxW: 2.9 }); return; }
     text(ctx, P, `${tr('stkOpen')}  ${PACK_COST}`, -0.25, 0, 0.5, '#fffaf0', { maxW: 2.3 });
     ctx.save(); ctx.translate(1.15, 0); starPath(ctx, 5, 0.26, 0.12); paint(ctx, P, '#f2c14e'); ctx.restore();
   }, { res: 100, rim: 0.1 });
@@ -115,14 +116,15 @@ async function openPack() {
   if (K.busy) return;
   const missing = ALL_STICKERS.filter(s => !owned(s.id));
   if (!missing.length) { say(tr('stkAll')); owlCheer(); return; }
-  const have = spendableStars();
-  if (have < PACK_COST) { sfx.bad(); owlTilt(); K.pack.rot.vel += 5; K.btn.punch(0.4); say(tr('stkNeed', PACK_COST - have)); return; }
+  const have = spendableStars(), free = (store.freePacks || 0) > 0;
+  if (!free && have < PACK_COST) { sfx.bad(); owlTilt(); K.pack.rot.vel += 5; K.btn.punch(0.4); say(tr('stkNeed', PACK_COST - have)); return; }
   K.busy = true; K.btn.punch(0.5); sfx.tap();
-  store.spent = (store.spent || 0) + PACK_COST; save(); refreshStars(); bumpStars();
-  // the stars fly from the counter into the pack
+  if (free) store.freePacks--; else { store.spent = (store.spent || 0) + PACK_COST; refreshStars(); bumpStars(); }
+  save();
+  // the stars fly from the counter into the pack (a free pack from the daily challenge skips this)
   const r = document.getElementById('stars').getBoundingClientRect();
   const from = screenToWorld(r.left + r.width / 2, r.top + r.height / 2, 2.5), to = K.pack.mesh.position.clone().setZ(2.5);
-  for (let i = 0; i < PACK_COST; i++) {
+  for (let i = 0; i < (free ? 0 : PACK_COST); i++) {
     const s = new Juicy(sharedMesh(miniStar())); s.mesh.position.copy(from); scene.add(s.mesh);
     tween(0.55, k => { s.mesh.position.lerpVectors(from, to, k); s.mesh.position.y += Math.sin(k * Math.PI) * 1.2; s.extra = k * 6; }, ease.inOutSine)
       .then(() => { s.kill(); sfx.star(i % 3); K.pack && K.pack.punch(0.25); });
@@ -148,6 +150,7 @@ async function openPack() {
   const placed = K.album.group.children.find(o => o.userData.sid === s.id); if (placed) { placed.userData.j.pop(0.8); placed.userData.j.punch(0.5); }
   burst(cell, 16, { speed: 3, up: 4, size: 0.8 });
   K.promptFn = hello;
+  buildSide(); // the button may change from "Free!" back to the star price
   K.busy = false;
 }
 
@@ -159,7 +162,7 @@ export const stickersGame = {
   exit() { removeAlbum(K.album); K.album = null; removeSide(); K.busy = false; },
   setLevel() {},
   relayout() { if (!K.album) return; removeAlbum(K.album); K.album = buildAlbum(K.page); buildSide(); },
-  update(dt, t) { if (K.btn && !K.busy) K.btn.sc.t = spendableStars() >= PACK_COST ? 1 + 0.04 * Math.sin(t * 5) : 1; },
+  update(dt, t) { if (K.btn && !K.busy) K.btn.sc.t = spendableStars() >= PACK_COST || store.freePacks > 0 ? 1 + 0.04 * Math.sin(t * 5) : 1; },
   pointer(o) {
     if (!o) return;
     const k = o.userData.kind;

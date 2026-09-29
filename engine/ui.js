@@ -37,8 +37,11 @@ function bannerMesh(txt) {
 function starMesh(gold) {
   return sharedMesh(cutShared('star' + gold, 1.3, 1.3, (ctx, P) => { starPath(ctx, 5, 0.64, 0.3); paint(ctx, P, gold ? '#f2c14e' : '#e9dcc4'); }, { res: 110, rim: 0.08 }));
 }
+// called once per finished round (stats, daily challenge, adaptive level); may await its own messages
+let roundHook = null;
+export const setRoundHook = fn => { roundHook = fn; };
 // center: world position of the work surface; stars earned fly to the HUD and are saved for gameId
-export async function celebrate({ center, nStars, gameId }) {
+export async function celebrate({ center, nStars, gameId, level = null, wrong = 0 }) {
   sfx.win(); S.shake = 0.45;
   burst(center.clone().add(new THREE.Vector3(-5, -3, 1)), 60, { speed: 4, up: 12, z: 3 });
   burst(center.clone().add(new THREE.Vector3(5, -3, 1)), 60, { speed: 4, up: 12, z: 3 });
@@ -67,6 +70,7 @@ export async function celebrate({ center, nStars, gameId }) {
   }
   tween(0.5, k => { m.position.y = center.y + 1 + k * 14; }, ease.inCubic).then(() => bj.kill());
   await wait(0.8);
+  if (roundHook) await roundHook({ gameId, level, nStars, wrong });
 }
 
 /* ---------- paper-sheet transition ---------- */

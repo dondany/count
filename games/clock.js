@@ -9,6 +9,7 @@ import { say, owlTilt, owlCheer } from '../engine/pip.js';
 import { setPencil } from '../engine/pencil.js';
 import { setTray, setTrayGlow, flyHome } from '../engine/tray.js';
 import { celebrate, wiggleHelp } from '../engine/ui.js';
+import { recordMistake } from '../engine/stats.js';
 
 const V3 = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const R = 3.2, TAU = Math.PI * 2;
@@ -195,6 +196,7 @@ function check() {
   const [h, m] = hm(K.T), [th, tm] = hm(K.target);
   if (h === th && m === tm) return win();
   K.problemWrong++; sfx.bad(); owlTilt(); K.clock.face.punch(0.2);
+  recordMistake('clock', h === th ? 'minute' : m === tm ? 'hour' : 'both');
   setPrompt(() => h === th ? tr('clkHourOk') : m === tm ? tr('clkMinOk') : tr('clkBoth'));
   if (K.problemWrong >= 2) wiggleHelp(true);
 }
@@ -224,7 +226,7 @@ function dropCard(p, target) {
     tween(0.25, k => p.mesh.position.lerpVectors(from, to, k)).then(() => { p.punch(0.6); sfx.snap(); burst(to, 14, { speed: 3, up: 4 }); });
     return win(p);
   }
-  K.problemWrong++; sfx.bad(); owlTilt(); flyHome(p); K.clock.face.punch(0.3);
+  K.problemWrong++; recordMistake('clock', 'read'); sfx.bad(); owlTilt(); flyHome(p); K.clock.face.punch(0.3);
   K.clock.hh.j.pop(0.4); wait(0.25).then(() => K.clock && K.clock.mh.j.pop(0.4));
   setPrompt(() => tr('clkReadWrong'));
   if (K.problemWrong >= 2) { setTrayGlow('t' + K.target); wiggleHelp(true); }
@@ -236,7 +238,7 @@ async function win(card) {
   const ti = Math.floor(Math.random() * 4);
   setPrompt(() => tr('clkWin', digital(K.target), inWords(K.target), tr('winTail')[ti]));
   K.clock.hh.j.pop(0.6); K.clock.mh.j.pop(0.6); K.clock.face.punch(0.4);
-  await celebrate({ center: K.clock.group.localToWorld(V3(0, 0.4, 0)), nStars, gameId: 'clock' });
+  await celebrate({ center: K.clock.group.localToWorld(V3(0, 0.4, 0)), nStars, gameId: 'clock', level: K.level, wrong: K.problemWrong });
   if (card) card.kill();
   if (tok !== K.round) return;
   await wait(0.3);
@@ -253,6 +255,7 @@ export const clockGame = {
   enter(level) { K.level = this.level = level; K.rounds = 0; K.T = 0; buildCard(); setPencil(pending); startRound(); },
   exit() { K.round++; K.busy = true; removeClock(); removeCard(); setTray(null); setPencil(null); wiggleHelp(false); },
   setLevel(l) { K.level = this.level = l; K.rounds = 0; startRound(); },
+  adopt(l) { K.level = this.level = l; },
   relayout() { buildCard(); if (K.clock) K.clock.group.position.set(S.L.main[0], S.L.main[1], 0); },
   update(dt, t) {
     if (K.ready && K.ready.mesh.visible && !K.busy) K.ready.j.sc.t = 1 + 0.03 * Math.sin(t * 4);

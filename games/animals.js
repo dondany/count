@@ -9,6 +9,7 @@ import { say, owlTilt, owlCheer } from '../engine/pip.js';
 import { setPencil } from '../engine/pencil.js';
 import { setTray, setTrayGlow, flyHome } from '../engine/tray.js';
 import { celebrate, wiggleHelp } from '../engine/ui.js';
+import { recordMistake } from '../engine/stats.js';
 import { ANIMALS } from './pictures.js';
 import { toMap, buildMap, disposeMap, relabelMap } from './worldMap.js';
 
@@ -98,7 +99,7 @@ function onDrop(p, t) {
   const a = byId(p.aid);
   if (t.cont === a.cont) return solved(a, p);
   flyHome(p); t.j.rot.vel += 4; t.j.punch(0.3);
-  An.problemWrong++; An.stepWrong++; sfx.bad(); owlTilt();
+  An.problemWrong++; An.stepWrong++; recordMistake('animals', 'cont'); sfx.bad(); owlTilt();
   setPrompt(() => tr('anNo', nm(a), t.cont));
   if (An.stepWrong >= 2) { const cj = An.map.conts[a.cont]; cj.pop(0.5); cj.punch(0.4); wiggleHelp(true); }
 }
@@ -125,7 +126,7 @@ async function win() {
   const ti = Math.floor(Math.random() * 4);
   setPrompt(() => tr('anWin', An.placed, tr('winTail')[ti]));
   An.map.group.children.forEach((o, i) => { if (o.userData.kind === 'homeAnimal') wait(0.08 * i).then(() => o.userData.j && o.userData.j.pop(0.6)); });
-  await celebrate({ center: An.map.group.localToWorld(V3(0, 0.2, 0)), nStars, gameId: 'animals' });
+  await celebrate({ center: An.map.group.localToWorld(V3(0, 0.2, 0)), nStars, gameId: 'animals', level: An.level, wrong: An.problemWrong });
   if (tok !== An.round) return;
   await wait(0.4);
   if (tok !== An.round) return;
@@ -140,6 +141,7 @@ export const animalsGame = {
   enter(level) { An.level = this.level = level; setPencil(null); startRound(); },
   exit() { An.round++; An.busy = true; disposeMap(An.map); An.map = null; removeCard(); setTray(null); wiggleHelp(false); },
   setLevel(l) { An.level = this.level = l; startRound(); },
+  adopt(l) { An.level = this.level = l; },
   relayout() {
     if (An.map) An.map.group.position.set(S.L.main[0], S.L.main[1] + 0.3, 0);
     const st = An.card && An.card.state; buildCard(); drawCard(st);

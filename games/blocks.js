@@ -9,6 +9,7 @@ import { say, owlTilt, owlCheer } from '../engine/pip.js';
 import { setPencil } from '../engine/pencil.js';
 import { setTray, digitItems, setTrayGlow, flyHome } from '../engine/tray.js';
 import { celebrate, wiggleHelp } from '../engine/ui.js';
+import { recordMistake } from '../engine/stats.js';
 
 const V3 = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const COLW = [2.3, 3.9, 4.6];                      // column width for ones, tens, hundreds
@@ -229,7 +230,7 @@ async function dropBlock(pc, col) {
   if (!col || B.busy || !B.mat) { flyHome(pc); return; }
   const p = pc.place;
   if (col.p !== p) {
-    flyHome(pc); sfx.bad(); owlTilt(); col.j.punch(0.3); B.wrong++; B.problemWrong++;
+    flyHome(pc); sfx.bad(); owlTilt(); col.j.punch(0.3); B.wrong++; B.problemWrong++; recordMistake('blocks', 'wrongCol');
     setPrompt(() => tr('blkWrongCol', p)); return;
   }
   if (value() + 10 ** p > 10 ** B.cols - 1) { flyHome(pc); sfx.bad(); owlTilt(); setPrompt(() => tr('blkTooMany', p)); return; }
@@ -243,7 +244,7 @@ async function dropBlock(pc, col) {
 function evaluate(p) {
   const d = target();
   if (value() === B.N) return win();
-  if (B.counts[p] > d[p]) { B.problemWrong++; owlTilt(); setPrompt(() => tr('blkTooMany', p)); return; }
+  if (B.counts[p] > d[p]) { B.problemWrong++; recordMistake('blocks', 'tooMany'); owlTilt(); setPrompt(() => tr('blkTooMany', p)); return; }
   if (B.counts[p] === d[p]) sfx.good(p + 2);
 }
 function removePiece(pc) {
@@ -282,7 +283,7 @@ function dropDigit(t, slot) {
     return;
   }
   // wrong: shake, bounce home, count that column together
-  B.wrong++; B.problemWrong++; slot.flash = 0.7; sfx.bad(); owlTilt(); flyHome(t);
+  B.wrong++; B.problemWrong++; recordMistake('blocks', 'readWrong'); slot.flash = 0.7; sfx.bad(); owlTilt(); flyHome(t);
   setPrompt(() => tr('blkReadWrong', slot.p));
   wait(0.5).then(() => countColumn(slot.p));
   if (B.wrong >= 2) { setTrayGlow('d' + want); wiggleHelp(true); }
@@ -295,7 +296,7 @@ async function win() {
   const ti = Math.floor(Math.random() * 4);
   setPrompt(() => tr('blkWin', B.N, words(B.N), tr('winTail')[ti]));
   for (let p = 0; p < B.cols; p++) B.pieces[p].forEach((pc, i) => wait(0.02 * i + p * 0.1).then(() => { pc.pop(0.5); pc.punch(0.3); }));
-  await celebrate({ center: B.mat.group.localToWorld(V3(0, 0.6, 0)), nStars, gameId: 'blocks' });
+  await celebrate({ center: B.mat.group.localToWorld(V3(0, 0.6, 0)), nStars, gameId: 'blocks', level: B.level, wrong: B.problemWrong });
   if (tok !== B.round) return;
   await wait(0.4);
   if (tok !== B.round) return;
@@ -332,6 +333,7 @@ export const blocksGame = {
   enter(level) { B.level = this.level = level; B.rounds = 0; buildCard(); setPencil(pending); startRound(); },
   exit() { B.round++; B.busy = true; disposeMat(); removeCard(); setTray(null); setPencil(null); wiggleHelp(false); },
   setLevel(l) { B.level = this.level = l; B.rounds = 0; startRound(); },
+  adopt(l) { B.level = this.level = l; },
   relayout() {
     buildCard();
     if (B.mat) B.mat.group.position.set(S.L.main[0], S.L.main[1], 0);

@@ -9,6 +9,7 @@ import { say, owlTilt, owlCheer } from '../engine/pip.js';
 import { setPencil } from '../engine/pencil.js';
 import { setTray, setTrayGlow, flyHome } from '../engine/tray.js';
 import { celebrate, wiggleHelp } from '../engine/ui.js';
+import { recordMistake } from '../engine/stats.js';
 import { COUNTRIES } from './flagsData.js';
 import { MW, toMap, pinMat, poleMat, tagMat, buildMap, disposeMap, relabelMap } from './worldMap.js';
 
@@ -136,7 +137,7 @@ async function nextStep(tok) {
   Fl.busy = false; S.lastAct = S.time;
 }
 function wrong(fn) {
-  Fl.problemWrong++; Fl.stepWrong++; sfx.bad(); owlTilt(); setPrompt(fn);
+  Fl.problemWrong++; Fl.stepWrong++; recordMistake('flags', Fl.level === 2 ? 'cont' : 'flag'); sfx.bad(); owlTilt(); setPrompt(fn);
   if (Fl.stepWrong >= 2) wiggleHelp(true);
 }
 async function solved(c, p, pin) {
@@ -182,7 +183,7 @@ async function win() {
   const ti = Math.floor(Math.random() * 4);
   setPrompt(() => tr('flWin', Fl.placed, tr('winTail')[ti]));
   Fl.pins.forEach((pin, i) => wait(0.08 * i).then(() => { if (pin.planted) { pin.planted.pop(0.6); pin.planted.punch(0.4); } }));
-  await celebrate({ center: Fl.map.group.localToWorld(V3(0, 0.2, 0)), nStars, gameId: 'flags' });
+  await celebrate({ center: Fl.map.group.localToWorld(V3(0, 0.2, 0)), nStars, gameId: 'flags', level: Fl.level, wrong: Fl.problemWrong });
   if (tok !== Fl.round) return;
   await wait(0.4);
   if (tok !== Fl.round) return;
@@ -203,6 +204,7 @@ export const flagsGame = {
   enter(level) { Fl.level = this.level = level; setPencil(pending); startRound(); },
   exit() { Fl.round++; Fl.busy = true; removeMap(); removeCard(); setTray(null); setPencil(null); wiggleHelp(false); },
   setLevel(l) { Fl.level = this.level = l; startRound(); },
+  adopt(l) { Fl.level = this.level = l; },
   relayout() {
     if (Fl.map) Fl.map.group.position.set(S.L.main[0], S.L.main[1] + 0.3, 0);
     const st = Fl.card && Fl.card.state; buildCard(); drawCard(st);

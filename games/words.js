@@ -9,6 +9,7 @@ import { say, owlTilt, owlCheer } from '../engine/pip.js';
 import { setPencil } from '../engine/pencil.js';
 import { setTray, setTrayGlow, flyHome } from '../engine/tray.js';
 import { celebrate, wiggleHelp } from '../engine/ui.js';
+import { recordMistake } from '../engine/stats.js';
 import { PICS } from './pictures.js';
 
 const V3 = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
@@ -126,7 +127,7 @@ function onDrop(p, slot) {
     if (W.slots.every(s => s.tile)) win();
     return;
   }
-  W.problemWrong++; W.stepWrong++; slot.flash = 0.7; sfx.bad(); owlTilt(); flyHome(p);
+  W.problemWrong++; W.stepWrong++; recordMistake('words', 'letter'); slot.flash = 0.7; sfx.bad(); owlTilt(); flyHome(p);
   setPrompt(() => tr('wrdWrong', p.ch), () => `${tr('wrdWrong', p.ch)} ${W.word}`);
   if (W.stepWrong >= 2) { const s = W.slots.find(x => !x.tile); glowLetter(s.ch); wiggleHelp(true); }
 }
@@ -138,7 +139,7 @@ async function win() {
   W.slots.forEach((s, i) => wait(0.07 * i).then(() => s.tile && (s.tile.pop(0.5), s.tile.punch(0.3))));
   const ti = Math.floor(Math.random() * 4);
   setPrompt(() => tr('wrdWin', W.word, tr('winTail')[ti]));
-  await celebrate({ center: W.board.group.localToWorld(V3(0, 0.3, 0)), nStars, gameId: 'words' });
+  await celebrate({ center: W.board.group.localToWorld(V3(0, 0.3, 0)), nStars, gameId: 'words', level: W.level, wrong: W.problemWrong });
   if (tok !== W.round) return;
   await wait(0.3);
   if (tok !== W.round) return;
@@ -156,6 +157,7 @@ export const wordsGame = {
   enter(level) { W.level = this.level = level; setPencil(pending); startRound(); },
   exit() { W.round++; W.busy = true; destroy(W.board); W.board = null; removeListen(); setTray(null); setPencil(null); wiggleHelp(false); },
   setLevel(l) { W.level = this.level = l; startRound(); },
+  adopt(l) { W.level = this.level = l; },
   relayout() { if (W.board) W.board.group.position.set(S.L.main[0], S.L.main[1], 0); if (W.card) buildListen(); refreshTray(); },
   update(dt, t) {
     const pd = pending(), pulse = 0.5 + 0.5 * Math.sin(t * 6);

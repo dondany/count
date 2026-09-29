@@ -9,6 +9,7 @@ import { say, owlTilt, owlCheer } from '../engine/pip.js';
 import { setPencil } from '../engine/pencil.js';
 import { setTray, digitItems, setTrayGlow, flyHome } from '../engine/tray.js';
 import { celebrate, wiggleHelp } from '../engine/ui.js';
+import { recordMistake } from '../engine/stats.js';
 import { buildPanel, removePanel, setPanelLabel, clearDots, countUp, countDown, panelPunch } from './panel.js';
 
 const $ = s => document.querySelector(s);
@@ -329,7 +330,7 @@ function onWrong(r) {
   const P = C.P, a = C.active;
   C.streak = 0; owlTilt();
   const counts = !['order', 'borrowFirst'].includes(r.why);
-  if (counts) { C.wrong++; C.problemWrong++; }
+  if (counts) { C.wrong++; C.problemWrong++; recordMistake(C.gameId, r.why); }
   const t = C.op === '-' ? P.topAfter[a] : 0, bb = C.op === '-' ? (P.dB[a] || 0) : 0;
   const msg = {
     order: () => tr('order', a),
@@ -377,7 +378,7 @@ async function win() {
   b.answer.slice().reverse().forEach((s, k) => wait(k * 0.11).then(() => { if (s.tile) { s.tile.pop(0.6); s.tile.punch(0.4); } }));
   const ti = Math.floor(Math.random() * 4);
   setPrompt(() => C.op === '+' ? tr('addWin', P.a, P.b, P.sum, tr('winTail')[ti]) : tr('subWin', P.a, P.b, P.r, tr('winTail')[ti]));
-  await celebrate({ center: b.group.localToWorld(V3(0, 0.9, 0)), nStars, gameId: C.gameId });
+  await celebrate({ center: b.group.localToWorld(V3(0, 0.9, 0)), nStars, gameId: C.gameId, level: C.level, wrong: C.problemWrong });
   if (tok !== C.round) return;
   await wait(0.5);
   if (tok !== C.round) return;
@@ -580,6 +581,7 @@ function makeGame(op, id) {
       removePanel(); setTray(null); setPencil(null); $('#go').classList.remove('show'); wiggleHelp(false);
     },
     setLevel(l) { C.level = this.level = l; nextRound(); },
+    adopt(l) { C.level = this.level = l; },
     relayout() {
       buildPanel();
       if (C.board && !C.boardAnim) C.board.group.position.set(S.L.main[0], S.L.main[1], 0);

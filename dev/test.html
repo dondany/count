@@ -3,21 +3,27 @@
 <script>
 const q = new URLSearchParams(location.search), plan = q.get('plan') || 'hub';
 const f = document.getElementById('f'); f.style.width = (q.get('w0') || innerWidth) + 'px'; f.style.height = (q.get('h0') || innerHeight) + 'px';
-if (q.get('lang')) localStorage.setItem('paperSchool.v1', JSON.stringify({ lang: q.get('lang'), stars: { sums: +(q.get('stars') || 0) }, stickers: (q.get('owned') || '').split(',').filter(Boolean) }));
-f.src = '../index.html?test&drive&auto' + (plan !== 'hub' ? '#' + plan : '');
+if (q.get('prep') === 'hook') { // daily challenge 2/3 on the times garden + two 3-star rounds already on level 1
+  const d = new Date(), date = `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+  q.set('extra', JSON.stringify({ daily: { date, game: q.get('plan'), done: 2, goal: 3, claimed: false },
+    stats: { [q.get('plan')]: { rounds: 2, stars: 6, wrong: 0, last: 0, mistakes: {}, levels: { 1: { rounds: 2, stars: 6, recent: [3, 3] } } } } }));
+}
+if (q.get('lang')) localStorage.setItem('paperSchool.v1', JSON.stringify(Object.assign({ lang: q.get('lang'), stars: { sums: +(q.get('stars') || 0) }, stickers: (q.get('owned') || '').split(',').filter(Boolean) }, JSON.parse(q.get('extra') || '{}'))));
+f.src = '../index.html?test&drive&auto' + (plan !== 'hub' && plan !== 'parents' ? '#' + plan : '');
 const A = () => f.contentWindow.__app, sleep = ms => new Promise(r => setTimeout(r, ms));
 const until = async fn => { for (let i = 0; i < 400 && !fn(); i++) await sleep(50); };
 const drop = (key, target) => { const p = A().spawnFromTray(key); A().current().dragOpts().onDrop(p, target); };
 const dig = n => String(n).split('').reverse().map(Number);
 document.title = 'harness-start'; let ticks = 0; setInterval(() => { ticks++; if (!document.title.startsWith('{')) document.title = 'ticks ' + ticks + ' app=' + !!A() + ' cur=' + (A() && A().current() ? A().current().id : '-'); }, 500);
 (async () => {
-  await until(() => A() && A().current() && A().current().id === plan);
+  await until(() => A() && A().current() && (A().current().id === plan || plan === 'parents'));
+  window.__log = [];
   setInterval(() => { if (A()) A().S.lastAct = A().S.time; }, 100);
-  setInterval(() => { try { const c = A().colState, b = A().blkState; document.title = JSON.stringify({ t: +A().S.time.toFixed(1), cur: A().current().id, busy: c.busy, active: c.active, P: c.P && (c.P.a + c.P.op + c.P.b), bb: b.busy, N: b.N, counts: b.counts, say: f.contentWindow.document.getElementById('bubbleText').textContent.slice(0, 90) }); } catch (e) { document.title = 'E ' + e.message; } }, 200);
+  setInterval(() => { try { const c = A().colState, b = A().blkState; document.title = JSON.stringify({ t: +A().S.time.toFixed(1), cur: A().current().id, busy: c.busy, active: c.active, P: c.P && (c.P.a + c.P.op + c.P.b), bb: b.busy, N: b.N, counts: b.counts, say: f.contentWindow.document.getElementById('bubbleText').textContent.slice(0, 90), st: (({ daily, levels, freePacks }) => ({ daily, levels, freePacks }))(JSON.parse(f.contentWindow.localStorage.getItem('paperSchool.v1') || '{}')) }); } catch (e) { document.title = 'E ' + e.message; } }, 200);
   const C = () => A().colState, B = () => A().blkState, stop = async ms => { await sleep(ms); f.contentWindow.__pause = true; };
   try {
     if (plan === 'hub' && q.get('nav')) {
-      const seq = ['sums', 'words', 'hub', 'animals', 'stickers', 'flags', 'clock', 'frac', 'minus', 'blocks', 'words', 'hub'];
+      const seq = ['times', 'space', 'hub', 'pattern', 'scene', 'sums', 'words', 'animals', 'stickers', 'flags', 'clock', 'frac', 'minus', 'blocks', 'space', 'hub'];
       for (const id of seq) {
         await A().go(id); await sleep(700);
         if (id === 'sums' || id === 'minus') { A().current().setLevel(3); await sleep(500); }
@@ -29,11 +35,12 @@ document.title = 'harness-start'; let ticks = 0; setInterval(() => { ticks++; if
       return stop(300);
     }
     if (plan === 'hub') return stop(+q.get('w') || 1500);
-    const Wd = () => A().wordsState, An = () => A().animalsState;
+    const Wd = () => A().wordsState, An = () => A().animalsState, Tm = () => A().timesState, Spc = () => A().spaceState, Pt = () => A().patternState;
     const K = () => A().clockState, Fr = () => A().fracState, Fl = () => A().flagsState;
     const ready = () => plan === 'blocks' ? B().mat && !B().busy : plan === 'clock' ? K().clock && !K().busy : plan === 'frac' ? Fr().stage && !Fr().busy
       : plan === 'flags' ? Fl().map && !Fl().busy : plan === 'words' ? Wd().board && !Wd().busy : plan === 'animals' ? An().map && !An().busy
-      : plan === 'stickers' ? true : C().board && !C().busy && C().P;
+      : plan === 'stickers' || plan === 'scene' || plan === 'parents' ? true : plan === 'times' ? Tm().plot && !Tm().busy : plan === 'space' ? Spc().board && !Spc().busy
+      : plan === 'pattern' ? Pt().train && !Pt().busy : C().board && !C().busy && C().P;
     await until(ready);
     if (q.get('level')) { A().current().setLevel(+q.get('level')); await sleep(300); await until(ready); }
     if (q.get('round')) { const st = plan === 'frac' ? Fr() : B(); st.rounds = +q.get('round'); st.restart(); await sleep(300); await until(ready); }
@@ -41,6 +48,26 @@ document.title = 'harness-start'; let ticks = 0; setInterval(() => { ticks++; if
     for (const s of (q.get('steps') || '').split(',').filter(Boolean)) {
       if (s === 'h') A().current().help();
       else if (s === 'wait') await until(ready);
+      else if (plan === 'times') {
+        const t = Tm(), tg = A().current().dragOpts().targets();
+        if (t.phase === 'plant') drop('s' + t.b, tg[0]);
+        else { const sl = t.slots.find(x => !x.tile); if (sl) drop('d' + (s === 'ok' ? sl.want : (sl.want + 3) % 10), sl); }
+      }
+      else if (plan === 'space') {
+        const sp = Spc(), tg = A().current().dragOpts().targets();
+        if (sp.level === 3) drop('p' + (s === 'ok' ? sp.q : (sp.q + 1) % 8), tg[0]);
+        else { const sl = tg[0]; if (sl) drop('p' + (s === 'ok' ? sl.i : (sl.i + 2) % 8), sl); }
+      }
+      else if (plan === 'pattern') {
+        const pt = Pt(), sl = pt.slots.find(x => !x.tile); if (!sl) continue;
+        drop(s === 'ok' ? sl.want : A().trayKeys().find(k => k !== sl.want), sl);
+      }
+      else if (plan === 'scene') { const keys = A().trayKeys(); drop(keys[+s % keys.length], A().current().dragOpts().targets()[0]); }
+      else if (plan === 'parents') {
+        const D = f.contentWindow.document; A().openParents();
+        const [a, b] = D.getElementById('pQ').textContent.match(/\d+/g).map(Number);
+        D.getElementById('pA').value = a * b; D.getElementById('pGo').click();
+      }
       else if (plan === 'words') {
         const w = Wd(), sl = w.slots.find(x => !x.tile); if (!sl) continue;
         const l = w.letters.find(x => !x.used && (s === 'ok' ? x.ch === sl.ch : x.ch !== sl.ch));

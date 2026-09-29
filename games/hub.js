@@ -1,11 +1,12 @@
 // The home screen: paper activity cards on the hills. Locked cards show what's coming next.
 import * as THREE from 'three';
 import { rand, Juicy, wait, unjuice } from '../engine/util.js';
-import { INK, DIGIT_COLORS, cutMesh, paint, text, rr, tornRect, starPath, softShadow, disposeMesh } from '../engine/paper.js';
+import { INK, DIGIT_COLORS, cutMesh, cutShared, sharedMesh, paint, text, rr, tornRect, starPath, softShadow, disposeMesh } from '../engine/paper.js';
 import { scene, S } from '../engine/core.js';
 import { sfx } from '../engine/audio.js';
 import { tr } from '../engine/i18n.js';
-import { store } from '../engine/store.js';
+import { store, save } from '../engine/store.js';
+import { daily } from '../engine/stats.js';
 import { say, owlTilt } from '../engine/pip.js';
 import { setTray } from '../engine/tray.js';
 import { setPencil } from '../engine/pencil.js';
@@ -60,7 +61,41 @@ const CARDS = [
       ctx.scale(0.38, 0.38); ALL_STICKERS.find(s => s.id === id).draw(ctx, P); ctx.restore();
     }
   } },
+  { id: 'times', name: 'gTimes', bg: '#d8ecc4', draw: (ctx, P) => {
+    rr(ctx, -1.5, -1.1, 3.0, 2.2, 0.2); paint(ctx, P, '#9b6a42');
+    const cols = ['#e8574a', '#d9508f', '#f2c14e'];
+    for (let r = 0; r < 3; r++) for (let c = 0; c < 4; c++) { ctx.beginPath(); ctx.arc(-1.05 + c * 0.7, -0.7 + r * 0.7, 0.22, 0, Math.PI * 2); paint(ctx, P, cols[r]); ctx.beginPath(); ctx.arc(-1.05 + c * 0.7, -0.7 + r * 0.7, 0.09, 0, Math.PI * 2); paint(ctx, P, '#f2c14e'); }
+  } },
+  { id: 'space', name: 'gSpace', bg: '#e4d9f6', draw: (ctx, P) => {
+    rr(ctx, -1.75, -1.4, 3.5, 2.8, 0.25); paint(ctx, P, '#2b3a67', { shadow: false });
+    ctx.beginPath(); ctx.arc(-1.75, 0, 0.9, -Math.PI / 2, Math.PI / 2); paint(ctx, P, '#ffd35a');
+    for (const [x, r, c] of [[-0.5, 0.18, '#a8a29a'], [0.05, 0.25, '#3f7fc1'], [0.75, 0.42, '#e0b07a']]) { ctx.beginPath(); ctx.arc(x, 0, r, 0, Math.PI * 2); paint(ctx, P, c); }
+    ctx.beginPath(); ctx.ellipse(0.75, 0, 0.8, 0.2, -0.3, 0, Math.PI * 2); ctx.strokeStyle = '#c9a67a'; ctx.lineWidth = 0.08; ctx.stroke();
+  } },
+  { id: 'pattern', name: 'gPattern', bg: '#fde2c8', draw: (ctx, P) => {
+    for (let i = 0; i < 3; i++) { rr(ctx, -1.6 + i * 0.95, 0.2, 0.8, 0.3, 0.05); paint(ctx, P, ['#d9703f', '#2f9e97', '#c9a13c'][i]); }
+    rr(ctx, 1.1, -0.3, 0.6, 0.8, 0.08); paint(ctx, P, '#e8574a');
+    [['circle', '#e8574a'], ['square', '#3f7fc1'], ['circle', '#e8574a']].forEach(([sh, c], i) => {
+      const x = -1.2 + i * 0.95; if (sh === 'circle') { ctx.beginPath(); ctx.arc(x, -0.2, 0.3, 0, Math.PI * 2); } else rr(ctx, x - 0.28, -0.48, 0.56, 0.56, 0.05); paint(ctx, P, c);
+    });
+    ctx.fillStyle = INK; for (const x of [-1.4, -0.9, -0.45, 0.05, 0.5, 0.95, 1.25, 1.55]) { ctx.beginPath(); ctx.arc(x, 0.6, 0.1, 0, Math.PI * 2); ctx.fill(); }
+  } },
+  { id: 'scene', name: 'gScene', bg: '#cde6f5', stat: () => '🎨', draw: (ctx, P) => {
+    rr(ctx, -1.7, -1.35, 3.4, 2.7, 0.25); paint(ctx, P, '#cfe8f3', { shadow: false });
+    ctx.beginPath(); ctx.moveTo(-1.7, 0.3); ctx.quadraticCurveTo(0, -0.2, 1.7, 0.4); ctx.lineTo(1.7, 1.35); ctx.lineTo(-1.7, 1.35); ctx.closePath(); ctx.fillStyle = '#a3c266'; ctx.fill();
+    ctx.save(); ctx.translate(-0.9, 0.1); ctx.scale(0.45, 0.45); ALL_STICKERS.find(s => s.id === 'w:tree').draw(ctx, P); ctx.restore();
+    ctx.save(); ctx.translate(0.9, -0.75); ctx.scale(0.3, 0.3); ALL_STICKERS.find(s => s.id === 'w:sun').draw(ctx, P); ctx.restore();
+    ctx.save(); ctx.translate(0.55, 0.55); ctx.scale(0.35, 0.35); ALL_STICKERS.find(s => s.id === 'a:panda').draw(ctx, P); ctx.restore();
+  } },
 ];
+export const nameKey = id => (CARDS.find(c => c.id === id) || {}).name;
+const CATS = { math: ['sums', 'minus', 'blocks', 'times', 'clock', 'frac'], world: ['words', 'flags', 'animals', 'space'], play: ['pattern', 'scene', 'stickers'] };
+const catOf = id => Object.keys(CATS).find(k => CATS[k].includes(id));
+const shown = () => CATS[store.hubCat] ? CATS[store.hubCat].map(id => CARDS.find(c => c.id === id)) : CARDS.slice(0, 6);
+const ribbonMat = (txt, done) => cutShared('ribbon' + txt, 2.6, 0.7, (ctx, P) => {
+  rr(ctx, -1.3, -0.35, 2.6, 0.7, 0.2); paint(ctx, P, done ? '#6fae52' : '#e8574a');
+  if (!P.rim) text(ctx, P, txt, 0, 0, 0.36, '#fffaf0', { maxW: 2.3 });
+}, { res: 110, rim: 0.07 });
 
 let H = null;
 function drawCard(c) {
@@ -77,25 +112,28 @@ function drawCard(c) {
     }
     text(ctx, P, tr(c.name), 0, 1.2, 0.52, INK, { maxW: CW - 0.5 });
     if (c.locked) text(ctx, P, tr('soon'), 0, 2.05, 0.4, '#9a7a62', { weight: 600, shadow: false });
-    else {
+    else if (c.id !== 'scene') {
       ctx.save(); ctx.translate(-0.45, 2.02); starPath(ctx, 5, 0.3, 0.14); paint(ctx, P, '#f2c14e'); ctx.restore();
       text(ctx, P, c.stat ? c.stat() : String(store.stars[c.id] || 0), c.stat ? 0.5 : 0.3, 2.05, 0.46, INK, { weight: 700 });
     }
   };
 }
-// [x, y, scale]: a 5×2 grid on wide screens, 3×3 on phones
-function positions() {
-  if (S.L.name === 'wide') return CARDS.map((c, i) => [((i % 5) - 2) * 3.35 + 0.9, 1.95 - Math.floor(i / 5) * 4.5, 0.72]);
-  return CARDS.map((c, i) => [((i % 3) - 1) * 3.8, 5.4 - Math.floor(i / 3) * 5.05, 0.84]);
+// [x, y, scale] for up to six cards: a 3×2 grid on wide screens, 2 columns on phones
+function positions(n) {
+  if (S.L.name === 'wide') return [...Array(n)].map((_, i) => [((i % 3) - 1) * 4.5 + 0.6, (n > 3 ? 1.85 : -0.6) - Math.floor(i / 3) * 5.0, 0.84]);
+  return [...Array(n)].map((_, i) => { const r = Math.floor(i / 2), last = i === n - 1 && n % 2; return [last ? 0 : (i % 2 ? 2.85 : -2.85), 4.1 - r * 5.95, 1]; });
 }
 function build() {
   destroy();
-  const g = new THREE.Group(); const pos = positions(); const cards = [];
-  CARDS.forEach((c, i) => {
+  const list = shown(), g = new THREE.Group(), pos = positions(list.length), cards = [], d = daily();
+  list.forEach((c, i) => {
     const cg = new THREE.Group(); cg.position.set(pos[i][0], pos[i][1], 0); cg.scale.setScalar(pos[i][2]); cg.rotation.z = rand(-0.03, 0.03);
     const m = cutMesh(CW, CH, drawCard(c), { res: 90, rim: 0.12 }); m.userData.kind = 'hubCard'; m.userData.id = c.id;
     const sh = softShadow(CW, CH); sh.position.set(0.3, -0.4, -0.3);
     cg.add(sh, m); g.add(cg);
+    if (d.game === c.id) { // today's challenge
+      const rb = sharedMesh(ribbonMat(d.claimed ? '✓ ' + tr('dailyTag', d.goal, d.goal) : '⭐ ' + tr('dailyTag', d.done, d.goal), d.claimed)); rb.position.set(0, CH / 2 + 0.05, 0.08); rb.rotation.z = 0.05; cg.add(rb);
+    }
     const j = new Juicy(m); j.sc.v = 0.0001; j.sc.t = 0.0001;
     cards.push({ c, g: cg, j, m, sh, y: pos[i][1], ph: rand(0, 6) });
   });
@@ -110,12 +148,17 @@ function destroy() {
   H = null;
 }
 
+function hello() { const d = daily(); return d.claimed ? tr('hubHello') : `${tr('hubHello')} ${tr('dailyHello', tr(nameKey(d.game)))}`; }
 export const hub = {
-  id: 'hub', level: null, levels: () => null,
+  id: 'hub', levels: () => [['math', '🔢', 'catMath'], ['world', '🌍', 'catWorld'], ['play', '🎨', 'catPlay']].map(([id, emoji, key]) => {
+    const d = daily(); return { id, emoji, label: tr(key) + (!d.claimed && catOf(d.game) === id ? ' ⭐' : '') };
+  }),
+  get level() { return store.hubCat || 'math'; }, set level(v) {},
   onPick: null,
-  enter() { setTray(null); setPencil(null); build(); say(tr('hubHello')); },
+  enter() { setTray(null); setPencil(null); build(); say(hello()); },
+  setLevel(cat) { store.hubCat = cat; save(); build(); },
   exit() { destroy(); },
-  relayout() { if (!H) return; const pos = positions(); H.cards.forEach((k, i) => { k.g.position.x = pos[i][0]; k.y = pos[i][1]; k.g.scale.setScalar(pos[i][2]); }); },
+  relayout() { if (!H) return; const pos = positions(H.cards.length); H.cards.forEach((k, i) => { k.g.position.x = pos[i][0]; k.y = pos[i][1]; k.g.scale.setScalar(pos[i][2]); }); },
   update(dt, t) { if (H) for (const k of H.cards) k.g.position.y = k.y + Math.sin(t * 1.4 + k.ph) * 0.08; },
   pointer(o) {
     if (!o || o.userData.kind !== 'hubCard') return;
@@ -124,6 +167,6 @@ export const hub = {
     if (k.c.locked) { sfx.bad(); owlTilt(); k.j.rot.vel += 5; say(tr('hubLocked')); return; }
     sfx.good(3); if (hub.onPick) hub.onPick(k.c.id);
   },
-  help() {}, prompt: () => tr('hubHello'), idle: () => false, canDrag: () => false, dragOpts: () => null,
-  onLang() { build(); say(tr('hubHello')); },
+  help() { say(hello()); }, prompt: () => hello(), idle: () => false, canDrag: () => false, dragOpts: () => null, adopt() {},
+  onLang() { build(); say(hello()); },
 };

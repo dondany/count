@@ -9,6 +9,7 @@ import { say, owlTilt, owlCheer } from '../engine/pip.js';
 import { setPencil } from '../engine/pencil.js';
 import { setTray, digitItems, setTrayGlow, flyHome } from '../engine/tray.js';
 import { celebrate, wiggleHelp } from '../engine/ui.js';
+import { recordMistake } from '../engine/stats.js';
 
 const V3 = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const TAU = Math.PI * 2, PR = 2.75, BW = 8.2, BH = 2.3;
@@ -197,7 +198,7 @@ async function dropPiece(pc, target) {
   const c = count();
   sfx.dot(c - 1);
   if (c === F.n) return win();
-  if (c > F.n) { F.problemWrong++; owlTilt(); setPrompt(() => tr('frTooMany')); }
+  if (c > F.n) { F.problemWrong++; recordMistake('frac', 'tooMany'); owlTilt(); setPrompt(() => tr('frTooMany')); }
 }
 function removePiece(pc) {
   const k = F.placed.indexOf(pc); if (k < 0) return;
@@ -239,7 +240,7 @@ function dropDigit(t, slot) {
     if (F.slots.every(s => s.tile)) win();
     return;
   }
-  F.problemWrong++; slot.flash = 0.7; sfx.bad(); owlTilt(); flyHome(t);
+  F.problemWrong++; recordMistake('frac', slot.which === 'n' ? 'num' : 'den'); slot.flash = 0.7; sfx.bad(); owlTilt(); flyHome(t);
   setPrompt(() => tr(slot.which === 'n' ? 'frNumWrong' : 'frDenWrong'));
   wait(0.5).then(() => countParts(slot.which === 'd'));
   if (F.problemWrong >= 2) { setTrayGlow('d' + want); wiggleHelp(true); }
@@ -251,7 +252,7 @@ async function win() {
   const ti = Math.floor(Math.random() * 4);
   setPrompt(() => tr('frWin', fracStr(), fracWords(F.n, F.d), tr('winTail')[ti]));
   F.placed.forEach((pc, i) => pc && wait(0.05 * i).then(() => { pc.pop(0.5); pc.punch(0.3); }));
-  await celebrate({ center: F.stage.group.localToWorld(V3(0, 0.4, 0)), nStars, gameId: 'frac' });
+  await celebrate({ center: F.stage.group.localToWorld(V3(0, 0.4, 0)), nStars, gameId: 'frac', level: F.level, wrong: F.problemWrong });
   if (tok !== F.round) return;
   await wait(0.3);
   if (tok !== F.round) return;
@@ -273,6 +274,7 @@ export const fracGame = {
   enter(level) { F.level = this.level = level; F.rounds = 0; setPencil(pending); startRound(); },
   exit() { F.round++; F.busy = true; removeStage(F.stage); F.stage = null; removeCard(); setTray(null); setPencil(null); wiggleHelp(false); },
   setLevel(l) { F.level = this.level = l; F.rounds = 0; startRound(); },
+  adopt(l) { F.level = this.level = l; },
   relayout() {
     if (F.stage) F.stage.group.position.set(S.L.main[0], S.L.main[1], 0);
     if (F.card) { const hadSlots = F.slots.length > 0; buildCard(); if (hadSlots) makeSlots(); } // (a rotated screen clears written digits)

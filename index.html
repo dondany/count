@@ -86,6 +86,28 @@
   .tiny{margin-top:18px;font-size:16px;color:var(--ink2)}
   .langs{margin-top:18px;display:inline-flex;gap:6px}
   .langs .btn{height:40px;font-size:16px}
+
+  /* ---------- parent corner ---------- */
+  #parents{position:fixed;inset:0;z-index:12;background:rgba(74,52,38,.35);display:flex;align-items:center;justify-content:center;padding:16px}
+  .pbox{background:var(--cream);border:3px solid var(--ink);border-radius:22px;box-shadow:var(--pop);width:min(780px,100%);max-height:88vh;overflow:auto;padding:18px 20px;
+    -webkit-user-select:text;user-select:text}
+  .phead{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px}
+  .phead h2{margin:0;font-size:26px}
+  #pGate{text-align:center;padding:18px 0;font-size:20px;font-weight:600}
+  #pGate input{font:inherit;font-size:22px;width:120px;text-align:center;border:3px solid var(--ink);border-radius:12px;padding:6px;margin:12px 8px;background:#fff}
+  #pErr{color:var(--tomato);min-height:24px}
+  .psum{font-weight:600;color:var(--ink2);margin-bottom:12px}
+  .ptable{width:100%;border-collapse:collapse;font-size:15px}
+  .ptable th,.ptable td{text-align:left;padding:6px 8px;border-bottom:2px dashed #e9dcc4}
+  .ptable th{font-size:13px;color:var(--ink2);text-transform:uppercase;letter-spacing:.04em}
+  .ptable td.n{text-align:right;font-variant-numeric:tabular-nums}
+  .pmist{margin:14px 0 6px;font-size:15px}
+  .pmist h3{margin:14px 0 6px;font-size:18px}
+  .pmist ul{margin:4px 0 10px;padding-left:20px}
+  .prow{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:14px}
+  .prow label{display:flex;gap:8px;align-items:center;font-weight:600}
+  .prow input{width:22px;height:22px}
+  #pReset{background:#f9d3dc}
 </style>
 </head>
 <body>
@@ -104,9 +126,16 @@
       <button class="btn" id="mSound"><span class="emo">🔊</span><span class="lbl"></span></button>
       <button class="btn" id="mVoice"><span class="emo">🗣️</span><span class="lbl"></span></button>
       <button class="btn" id="mLang"><span class="emo">🌍</span><span class="lbl"></span></button>
+      <button class="btn" id="mParents"><span class="emo">👪</span><span class="lbl"></span></button>
     </div>
   </div>
 </div>
+
+<div id="parents" class="hidden"><div class="pbox">
+  <div class="phead"><h2 id="pTitle"></h2><button class="btn" id="pClose">✕</button></div>
+  <div id="pGate"><div id="pQ"></div><input id="pA" inputmode="numeric" autocomplete="off"><button class="btn" id="pGo"></button><div id="pErr"></div></div>
+  <div id="pBody" class="hidden"></div>
+</div></div>
 
 <div id="bubble"><span id="bubbleText"></span></div>
 <button id="go"></button>
