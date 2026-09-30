@@ -62,8 +62,10 @@ setRoundHook(async ({ gameId, level, nStars, wrong }) => {
     else { note(tr('dailyStep', d.done, d.goal)); owlHop(1); await wait(1.2); }
   }
   const g = GAMES[gameId];
-  if (!g || g !== current || typeof level !== 'number') return;
-  const ids = g.levels().map(l => l.id), nl = suggestLevel(gameId, level, ids);
+  if (!g || g !== current || typeof level !== 'number' || g.adaptive === false) return;
+  const ids = g.adaptiveLevels || g.levels().map(l => l.id);
+  if (!ids.includes(level)) return;
+  const nl = suggestLevel(gameId, level, ids);
   if (nl === level) return;
   g.adopt(nl); store.levels[gameId] = nl; save(); resetIntros();
   setLevels(g.levels(), nl, l => pickLevel(g, l));

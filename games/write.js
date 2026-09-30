@@ -1,21 +1,22 @@
 // "Writing": trace English letters with a finger — each line from its green start dot, in the right order and direction.
 import * as THREE from 'three';
-import { clamp, Juicy, tween, wait, ease, unjuice } from '../engine/util.js';
+import { clamp, rint, Juicy, tween, wait, ease, unjuice } from '../engine/util.js';
 import { INK, font, cutTex, cutShared, sharedMesh, paperMat, paint, text, rr, tornRect, starPath, softShadow, disposeMesh } from '../engine/paper.js';
 import { scene, S, burst, atZ, startGrab } from '../engine/core.js';
 import { sfx, speak } from '../engine/audio.js';
-import { tr, lang, cap1 } from '../engine/i18n.js';
+import { tr, lang, cap1, words } from '../engine/i18n.js';
 import { say, note, firstTime, owlTilt, owlCheer } from '../engine/pip.js';
 import { setPencil } from '../engine/pencil.js';
 import { setTray } from '../engine/tray.js';
 import { celebrate, wiggleHelp } from '../engine/ui.js';
 import { recordMistake } from '../engine/stats.js';
 import { store, save } from '../engine/store.js';
-import { UPPER, LOWER } from './letters.js';
+import { UPPER, LOWER, DIGITS } from './letters.js';
 import { PICS, ANIMALS } from './pictures.js';
 
 const V3 = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const ABC = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+const DOT_COLS = ['#e8574a', '#f2c14e', '#2f9e97', '#3f7fc1', '#d9508f'];
 const INKS = ['#e8574a', '#2f9e97', '#3f7fc1', '#d9508f', '#e9a825'];
 // generous for small fingers: the finger may wander ~a fingertip from the centre line
 const TOL = 0.95, START_TOL = 1.2, GUIDE_W = 1.0, INK_W = 0.72;
@@ -23,12 +24,17 @@ const Wr = {
   level: 1, idx: 0, ch: 'A', strokes: [], cur: 0, prog: 0, warned: false, startWarned: false, grabbing: false,
   busy: true, round: 0, help: 0, mistakes: 0, board: null, card: null, buttons: [], dirty: false, marker: null, promptFn: () => '',
 };
-const letters = () => Wr.level === 1 ? ABC : ABC.toLowerCase();
+const SETS = { 1: ABC, 2: ABC.toLowerCase(), 3: '0123456789' };
+const ALL = ABC + ABC.toLowerCase() + '0123456789';
+const isLower = ch => ch >= 'a' && ch <= 'z', isDigit = ch => ch >= '0' && ch <= '9';
+// Practice (level 4) picks at random from everything, never the same character twice in a row
+function nextPractice() { let c; do c = ALL[rint(0, ALL.length - 1)]; while (c === Wr.ch); return c; }
+const setOf = () => SETS[Wr.level] || ALL;
 
 /* ---------- geometry ---------- */
 const dims = () => S.L.name === 'wide' ? { w: 11.0, h: 8.2 } : { w: 11.3, h: 8.4 };
 function buildStrokes(ch) {
-  const upper = Wr.level === 1, raw = (upper ? UPPER : LOWER)[ch], s = upper ? 0.058 : 0.046, top = upper ? 2.9 : 3.1;
+  const upper = !isLower(ch), raw = (isDigit(ch) ? DIGITS : upper ? UPPER : LOWER)[ch], s = upper ? 0.058 : 0.046, top = upper ? 2.9 : 3.1;
   let x0 = Infinity, x1 = -Infinity; raw.flat().forEach(([x]) => { x0 = Math.min(x0, x); x1 = Math.max(x1, x); });
   const cx = (x0 + x1) / 2;
   return raw.map(pts => {
@@ -63,17 +69,18 @@ function project(q, st, sMin, sMax) {
 }
 
 /* ---------- board ---------- */
-const boardMat = () => { const { w, h } = dims(); return cutShared(`wboard${S.L.name}${Wr.level}`, w, h, (ctx, P) => {
+// ruled lines: capitals and digits use one tall band; lowercase gets the x-height and descender lines too
+const boardMat = upper => { const { w, h } = dims(); return cutShared(`wboard${S.L.name}${upper}`, w, h, (ctx, P) => {
   tornRect(ctx, -w / 2, -h / 2, w, h, 0.35, 0.04, 606); paint(ctx, P, '#fffaf0', { shadow: false });
   if (P.rim) return;
-  const upper = Wr.level === 1, line = (y, dash, a) => { ctx.beginPath(); ctx.setLineDash(dash ? [0.2, 0.15] : []); ctx.moveTo(-w / 2 + 0.4, -y); ctx.lineTo(w / 2 - 0.4, -y); ctx.strokeStyle = `rgba(80,140,210,${a})`; ctx.lineWidth = 0.04; ctx.stroke(); };
+  const line = (y, dash, a) => { ctx.beginPath(); ctx.setLineDash(dash ? [0.2, 0.15] : []); ctx.moveTo(-w / 2 + 0.4, -y); ctx.lineTo(w / 2 - 0.4, -y); ctx.strokeStyle = `rgba(80,140,210,${a})`; ctx.lineWidth = 0.04; ctx.stroke(); };
   if (upper) { line(2.9, false, 0.45); line(0, true, 0.35); line(-2.9, false, 0.6); }
   else { line(3.1, false, 0.3); line(3.1 - 45 * 0.046, true, 0.4); line(3.1 - 100 * 0.046, false, 0.6); line(3.1 - 135 * 0.046, false, 0.2); }
   ctx.setLineDash([]);
 }, { res: 50, rim: 0.1 }); };
-function buildBoard() {
+function buildBoard(upper) {
   const { w, h } = dims(), g = new THREE.Group(); g.position.set(S.L.main[0], S.L.main[1], 0);
-  const bg = sharedMesh(boardMat()); bg.userData.kind = 'writeBoard'; g.add(bg);
+  const bg = sharedMesh(boardMat(upper)); bg.userData.kind = 'writeBoard'; g.add(bg);
   const sh = softShadow(w, h); sh.position.set(0.3, -0.4, -0.35); g.add(sh);
   const ov = cutTex(w, h, () => {}, { res: 55, rim: 0, pad: 0.02 });
   const om = new THREE.Mesh(new THREE.PlaneGeometry(ov.W, ov.H), new THREE.MeshBasicMaterial({ map: ov.tex, transparent: true, depthWrite: false }));
@@ -82,7 +89,7 @@ function buildBoard() {
   const tracer = new Juicy(sharedMesh(cutShared('wtracer', 0.8, 0.8, (ctx, P) => { starPath(ctx, 5, 0.38, 0.17); paint(ctx, P, '#f2c14e'); }, { res: 120, rim: 0.06 })));
   tracer.sc.v = tracer.sc.t = 0.0001; tracer.mesh.position.z = 0.3; g.add(tracer.mesh);
   scene.add(g);
-  return { group: g, sh, ov, om, marker, tracer, bg: new Juicy(bg) };
+  return { group: g, sh, ov, om, marker, tracer, bg: new Juicy(bg), upper };
 }
 function removeBoard(b) { if (!b) return; unjuice(b.group); scene.remove(b.group); disposeMesh(b.sh); disposeMesh(b.om); }
 const path = (ctx, pts, upto = Infinity, st = null) => {
@@ -133,6 +140,13 @@ function drawOverlay() {
 
 /* ---------- side card + buttons ---------- */
 function pictureFor(ch) {
+  if (isDigit(ch)) {
+    const n = +ch;
+    return { num: true, word: words(n), draw: (ctx, P) => {
+      for (let k = 0; k < n; k++) { const x = (k % 5 - 2) * 0.55, y = (Math.floor(k / 5) - (n > 5 ? 0.5 : 0)) * 0.6; ctx.beginPath(); ctx.arc(x, y, 0.22, 0, Math.PI * 2); paint(ctx, P, DOT_COLS[k % 5]); }
+      if (!n) { ctx.beginPath(); ctx.arc(0, 0, 0.55, 0, Math.PI * 2); ctx.lineWidth = 0.06; ctx.setLineDash([0.12, 0.1]); ctx.strokeStyle = '#9a7a62'; ctx.stroke(); ctx.setLineDash([]); }
+    } };
+  }
   const up = ch.toUpperCase();
   const w = Object.entries(PICS).find(([, p]) => p[lang].startsWith(up));
   if (w) return { draw: w[1].draw, word: cap1(w[1][lang].toLowerCase()) };
@@ -170,9 +184,9 @@ function drawCard() {
     tornRect(ctx, -w / 2, -h / 2, w, h, 0.3, 0.035, 66); paint(ctx, P, '#fff3dc', { shadow: false });
     if (P.rim) return;
     const ux = tall ? -2.4 : 0, uy = tall ? 0 : -1.1;
-    text(ctx, P, Wr.ch.toUpperCase() + Wr.ch.toLowerCase(), ux, uy, 1.5, '#e8574a');
+    text(ctx, P, isDigit(Wr.ch) ? Wr.ch : Wr.ch.toUpperCase() + Wr.ch.toLowerCase(), ux, uy, 1.5, '#e8574a');
     if (pic) {
-      ctx.save(); ctx.translate(tall ? 1.2 : 0, tall ? -0.25 : 0.95); ctx.scale(0.55, 0.55); pic.draw(ctx, P); ctx.restore();
+      ctx.save(); ctx.translate(tall ? 1.2 : 0, tall ? -0.25 : 0.95); if (!pic.num) ctx.scale(0.55, 0.55); else if (tall) ctx.scale(0.8, 0.8); pic.draw(ctx, P); ctx.restore();
       text(ctx, P, pic.word, tall ? 2.9 : 0, tall ? 0.95 : 2.1, 0.44, INK, { maxW: tall ? 2.8 : w - 0.6 });
     }
   });
@@ -215,9 +229,11 @@ async function showMe() {
 async function startLetter() {
   const tok = ++Wr.round;
   Wr.busy = true; Wr.busyDone = false; Wr.help = 0; Wr.mistakes = 0; Wr.cur = 0; Wr.prog = 0; Wr.warned = Wr.startWarned = false; S.nudged = false; wiggleHelp(false);
-  Wr.ch = letters()[Wr.idx]; Wr.strokes = buildStrokes(Wr.ch);
+  Wr.ch = Wr.level === 4 ? nextPractice() : setOf()[Wr.idx % setOf().length]; Wr.strokes = buildStrokes(Wr.ch);
+  const upper = !isLower(Wr.ch);
+  if (Wr.board && Wr.board.upper !== upper) { removeBoard(Wr.board); Wr.board = null; }
   if (!Wr.board) {
-    Wr.board = buildBoard(); const g = Wr.board.group;
+    Wr.board = buildBoard(upper); const g = Wr.board.group;
     await tween(0.6, k => g.position.set(S.L.main[0], S.L.main[1] + (1 - k) * 15, 0), ease.outBack);
     sfx.snap();
   } else { Wr.board.bg.punch(0.2); sfx.paper(); }
@@ -240,11 +256,11 @@ async function letterDone() {
   const tok = Wr.round; Wr.busy = true; Wr.busyDone = true; drawOverlay();
   Wr.board.bg.pop(0.4); owlCheer();
   const pic = pictureFor(Wr.ch);
-  quiet(() => tr('wrDone', Wr.ch, pic && pic.word));
+  quiet(() => tr('wrDone', Wr.ch, pic && !pic.num && pic.word));
   const nStars = Wr.mistakes === 0 ? 3 : Wr.mistakes <= 2 ? 2 : 1;
   await celebrate({ center: Wr.board.group.localToWorld(V3(0, 0.3, 0)), nStars, gameId: 'write', level: Wr.level, wrong: Wr.mistakes });
   if (tok !== Wr.round) return;
-  Wr.idx = (Wr.idx + 1) % 26; store.write = store.write || {}; store.write[Wr.level] = Wr.idx; save();
+  moveBy(1);
   startLetter();
 }
 function wrongStart() {
@@ -304,11 +320,19 @@ Wr.simulate = (reverse = false, frac = 1, off = 0.12) => {
   lift();
 };
 
+// move through the current set (remembered per tab); Practice just draws a new random character
+function moveBy(d) {
+  if (Wr.level === 4) return;
+  const n = setOf().length; Wr.idx = (Wr.idx + d + n) % n;
+  store.write = store.write || {}; store.write[Wr.level] = Wr.idx; save();
+}
+
 /* ---------- game object ---------- */
 export const writeState = Wr;
 export const writeGame = {
   id: 'write',
-  levels: () => [{ id: 1, emoji: '🔠', label: tr('lvUpper') }, { id: 2, emoji: '🔡', label: tr('lvLower') }],
+  levels: () => [{ id: 1, emoji: '🔠', label: tr('lvUpper') }, { id: 2, emoji: '🔡', label: tr('lvLower') }, { id: 3, emoji: '🔢', label: tr('lvDigits') }, { id: 4, emoji: '🎲', label: tr('lvMix') }],
+  adaptive: false, // ABC, abc, 123 and Practice are separate skills, not a difficulty ladder
   level: 1,
   enter(level) {
     Wr.level = this.level = level; Wr.idx = (store.write && store.write[level]) || 0;
@@ -326,7 +350,7 @@ export const writeGame = {
   adopt(l) { Wr.level = this.level = l; Wr.idx = (store.write && store.write[l]) || 0; removeBoard(Wr.board); Wr.board = null; },
   relayout() {
     buildCard();
-    if (Wr.board) { const keep = { cur: Wr.cur, prog: Wr.prog }; removeBoard(Wr.board); Wr.board = buildBoard(); Object.assign(Wr, keep); drawOverlay(); }
+    if (Wr.board) { const keep = { cur: Wr.cur, prog: Wr.prog }; const up = Wr.board.upper; removeBoard(Wr.board); Wr.board = buildBoard(up); Object.assign(Wr, keep); drawOverlay(); }
   },
   update() { if (Wr.dirty) drawOverlay(); },
   pointer(o, e) {
@@ -334,7 +358,7 @@ export const writeGame = {
     const k = o.userData.kind;
     if (k === 'writeBoard') pointerDown(e);
     else if (k === 'wshow') { o.userData.j.punch(0.4); o.userData.j.pop(0.3); sfx.tap(); showMe(); }
-    else if (k === 'wnav') { const j = o.userData.j; j.punch(0.4); sfx.tap(); Wr.idx = (Wr.idx + o.userData.dir + 26) % 26; store.write = store.write || {}; store.write[Wr.level] = Wr.idx; save(); startLetter(); }
+    else if (k === 'wnav') { const j = o.userData.j; j.punch(0.4); sfx.tap(); moveBy(o.userData.dir); startLetter(); }
     else if (k === 'wcard') { Wr.card.j.pop(0.3); const pic = pictureFor(Wr.ch); speak(pic ? `${Wr.ch}. ${pic.word}` : Wr.ch); }
   },
   help() {

@@ -76,7 +76,7 @@ document.title = 'harness-start'; let ticks = 0; setInterval(() => { ticks++; if
       }
       else if (plan === 'write' && s.startsWith('every')) { // trace every letter of the level, one after another, with a shaky finger
         const w = A().writeState, off = +(s.split(':')[1] || 0.12), res = []; A().store.adaptive = false;
-        for (let i = 0; i < 26; i++) {
+        for (let i = 0; i < (w.level === 3 ? 10 : 26); i++) {
           A().store.write = { [w.level]: i }; A().current().setLevel(w.level);
           await sleep(200); await until(() => w.board && !w.busy);
           for (let k = 0; k < w.strokes.length && !w.busyDone; k++) { w.simulate(false, 1, off); await sleep(30); }
@@ -85,6 +85,7 @@ document.title = 'harness-start'; let ticks = 0; setInterval(() => { ticks++; if
         console.log('LETTERS ' + res.join(' '));
       }
       else if (plan === 'write') {
+        if (s === 'full') { const w = A().writeState; for (let k = 0; k < w.strokes.length && !w.busyDone; k++) { w.simulate(false, 1, 0.12); await sleep(30); } console.log('DONE ' + w.ch + ' ' + w.busyDone); continue; }
         const w = A().writeState;
         if (s === 'ok') w.simulate(); if (s === 'rev') w.simulate(true); if (s === 'half') w.simulate(false, 0.5); if (s === 'wobble') w.simulate(false, 1, 0.72); if (s === 'wobhalf') w.simulate(false, 0.55, 0.72); if (s === 'show') A().current().pointer({ userData: { kind: 'wshow', j: { punch() {}, pop() {} } } }, {});
       }

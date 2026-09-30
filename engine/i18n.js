@@ -268,7 +268,7 @@ const STR = {
     spExplore: 'This is our solar system! Tap a planet to find out about it.',
     spPlace: 'Drag each planet onto its orbit — Mercury is closest to the Sun!',
     // writing
-    gWrite: 'Writing', lvUpper: 'ABC', lvLower: 'abc',
+    gWrite: 'Writing', lvUpper: 'ABC', lvLower: 'abc', lvDigits: '123', lvMix: 'Practice',
     wrStart: l => `Let's write <b>${l}</b>! Start at the green dot and follow the grey path in one go. Tap ▶ to watch how.`,
     wrKeep: 'Oops — keep your finger down all the way to the end of the line!',
     wrWatch: 'Watch first — this is how we write it!',
@@ -444,7 +444,7 @@ const STR = {
     lvExplore: 'Odkrywaj', lvPlace: 'Ułóż', spTap: 'Kliknij planetę!',
     spExplore: 'Oto nasz Układ Słoneczny! Kliknij planetę, żeby coś o niej usłyszeć.',
     spPlace: 'Przeciągnij każdą planetę na jej orbitę — Merkury jest najbliżej Słońca!',
-    gWrite: 'Pisanie', lvUpper: 'ABC', lvLower: 'abc',
+    gWrite: 'Pisanie', lvUpper: 'ABC', lvLower: 'abc', lvDigits: '123', lvMix: 'Ćwiczenia',
     wrStart: l => `Piszemy <b>${l}</b>! Zacznij od zielonej kropki i prowadź palec po szarej ścieżce bez odrywania. Kliknij ▶, żeby zobaczyć jak.`,
     wrKeep: 'Ups — nie odrywaj palca aż do końca linii!',
     wrWatch: 'Najpierw popatrz, jak to się pisze!',

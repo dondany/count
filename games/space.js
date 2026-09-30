@@ -247,6 +247,7 @@ const COL_W = new THREE.Color('#ffffff'), COL_HOV = new THREE.Color('#ffe38a');
 export const spaceState = Sp;
 export const spaceGame = {
   id: 'space',
+  adaptive: false, // explore / place / quiz are different activities
   levels: () => [{ id: 1, emoji: '🔭', label: tr('lvExplore') }, { id: 2, emoji: '🪐', label: tr('lvPlace') }, { id: 3, emoji: '❓', label: tr('lvQuiz') }],
   level: 1,
   enter(level) { Sp.level = this.level = level; setPencil(null); startRound(); },

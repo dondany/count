@@ -70,3 +70,17 @@ export const LOWER = {
   y: [L(5, 45, 32, 100), L(60, 45, 18, 135)],
   z: [L(5, 45, 58, 45, 5, 100, 58, 100)],
 };
+
+// digits, same 0..100 box as capitals
+export const DIGITS = {
+  0: [A(35, 50, 30, 50, -90, -450)], // from the top, counter-clockwise
+  1: [L(15, 28, 40, 0, 40, 100)], // little flag up, then straight down
+  2: [J(A(36, 28, 27, 26, -165, 25), L(8, 100, 70, 100))], // round the top, slide down, across
+  3: [J(A(35, 25, 27, 25, -160, 90), A(35, 75, 30, 25, -90, 160))], // two bumps in one go
+  4: [L(12, 0, 8, 62, 74, 62), L(56, 0, 56, 100)], // down and across, then the tall line
+  5: [J(L(16, 0, 13, 46), A(38, 70, 30, 28, -145, 160)), L(16, 0, 66, 0)], // down, round the belly, then the hat
+  6: [J(A(52, 60, 42, 60, -80, -180), A(40, 72, 28, 28, 180, -180))], // curve down, round the loop
+  7: [L(6, 0, 70, 0, 28, 100)], // across, then down
+  8: [J(A(40, 26, 26, 24, -25, -270), A(40, 75, 30, 25, -90, 180), L(40, 50, 62, 30, 64, 16))], // an S, then back up
+  9: [J(A(38, 30, 27, 30, -20, -340), L(64, 20, 64, 100))], // circle back, then down
+};

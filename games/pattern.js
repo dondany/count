@@ -199,6 +199,7 @@ function pending() { if (Pt.busy || !Pt.train) return null; const s = Pt.slots.f
 export const patternState = Pt;
 export const patternGame = {
   id: 'pattern',
+  adaptiveLevels: [1, 2], // may step up from shapes to tricky shapes, but never jump to number patterns on its own
   levels: () => [{ id: 1, emoji: '🔺', label: tr('lvPat1') }, { id: 2, emoji: '🧩', label: tr('lvPat2') }, { id: 3, emoji: '🔢', label: tr('lvPat3') }],
   level: 1,
   enter(level) { Pt.level = this.level = level; setPencil(pending); startRound(); },

@@ -312,6 +312,7 @@ addEventListener('pointerup', liftTouch); addEventListener('pointercancel', lift
 export const flagsState = Fl;
 export const flagsGame = {
   id: 'flags',
+  adaptive: false, // flags / continents / world / Europe are different games, not harder versions of one
   levels: () => [{ id: 1, emoji: '🚩', label: tr('lvFlags') }, { id: 2, emoji: '🗺️', label: tr('lvCont') }, { id: 3, emoji: '🌍', label: tr('lvWorld') }, { id: 4, emoji: '🏰', label: tr('lvEurope') }],
   level: 1,
   enter(level) { Fl.level = this.level = level; setPencil(pending); startRound(); },
