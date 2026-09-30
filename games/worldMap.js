@@ -36,10 +36,17 @@ const contMat = i => cutShared('cont' + i,contBox(i).w, contBox(i).h, (ctx, P) =
 const labelMat = i => cutShared('clab' + i + lang, 3.4, 0.5, (ctx, P) => {
   text(ctx, P, contName(i), 0, 0, 0.28, '#5b4332', { weight: 600, shadow: false, maxW: 3.3 });
 }, { res: 120, rim: 0, pad: 0.02 });
-export const pinMat = () => cutShared('pin', 0.46, 0.46, (ctx, P) => {
-  ctx.beginPath(); ctx.arc(0, 0, 0.2, 0, Math.PI * 2); paint(ctx, P, '#e8574a');
-  if (!P.rim) { ctx.beginPath(); ctx.arc(-0.06, -0.06, 0.06, 0, Math.PI * 2); ctx.fillStyle = 'rgba(255,255,255,.7)'; ctx.fill(); }
-}, { res: 140, rim: 0.05 });
+export const pinMat = () => cutShared('pin2', 0.62, 0.62, (ctx, P) => {
+  ctx.beginPath(); ctx.arc(0, 0, 0.29, 0, Math.PI * 2); paint(ctx, P, '#e8574a');
+  if (!P.rim) { ctx.beginPath(); ctx.arc(-0.08, -0.08, 0.08, 0, Math.PI * 2); ctx.fillStyle = 'rgba(255,255,255,.7)'; ctx.fill(); }
+}, { res: 140, rim: 0.06 });
+// the target ring around a pin that still needs its flag (gold while a flag hovers over it)
+export const pinRingMat = gold => cutShared('pinring' + gold, 1.5, 1.5, (ctx) => {
+  ctx.beginPath(); ctx.arc(0, 0, 0.62, 0, Math.PI * 2);
+  ctx.fillStyle = gold ? 'rgba(255,222,110,.35)' : 'rgba(255,255,255,.18)'; ctx.fill();
+  ctx.lineWidth = gold ? 0.12 : 0.07; ctx.strokeStyle = gold ? '#f2c14e' : 'rgba(255,255,255,.9)';
+  if (!gold) ctx.setLineDash([0.16, 0.12]); ctx.stroke();
+}, { res: 110, rim: 0, pad: 0.04 });
 export const poleMat = () => cutShared('pole', 0.07, 0.95, (ctx, P) => { rr(ctx, -0.035, -0.475, 0.07, 0.95, 0.03); paint(ctx, P, '#8a5a3b'); }, { res: 140, rim: 0.03 });
 export const tagMat = label => cutShared('ftag' + label, 0.32 + label.length * 0.2, 0.5, (ctx, P) => {
   const w = 0.32 + label.length * 0.2;

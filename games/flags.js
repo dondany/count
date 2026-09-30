@@ -11,7 +11,7 @@ import { setTray, setTrayGlow, flyHome } from '../engine/tray.js';
 import { celebrate, wiggleHelp } from '../engine/ui.js';
 import { recordMistake } from '../engine/stats.js';
 import { COUNTRIES } from './flagsData.js';
-import { MW, toMap, pinMat, poleMat, tagMat, buildMap, disposeMap, relabelMap } from './worldMap.js';
+import { MW, toMap, pinMat, pinRingMat, poleMat, tagMat, buildMap, disposeMap, relabelMap } from './worldMap.js';
 
 const V3 = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const nm = c => c.name[lang], capOf = c => c.capital[lang];
@@ -34,10 +34,12 @@ function removeMap() { disposeMap(Fl.map); Fl.map = null; Fl.pins = []; }
 function makePin(c, label) {
   const [x, y] = toMap(c.lon, c.lat), g = new THREE.Group(); g.position.set(x, y, 0.3);
   const head = new Juicy(sharedMesh(pinMat())); head.sc.v = 0.0001; head.sc.t = 1; head.pop(0.6); g.add(head.mesh);
+  const ring = new Juicy(sharedMesh(pinRingMat(false), false)); ring.mesh.position.z = -0.02; ring.sc.v = 0.0001; g.add(ring.mesh);
   let tag = null;
-  if (label) { tag = new Juicy(sharedMesh(tagMat(label))); tag.mesh.position.set(0, 0.5, 0.05); tag.sc.v = 0.0001; tag.sc.t = 1; g.add(tag.mesh); }
+  if (label) { tag = new Juicy(sharedMesh(tagMat(label))); tag.mesh.position.set(0, 0.62, 0.05); tag.sc.v = 0.0001; tag.sc.t = 1; g.add(tag.mesh); }
   Fl.map.group.add(g);
-  const pin = { c, group: g, head, tag, mesh: head.mesh, j: head, r: 1.1, planted: null };
+  // drop radius: with a single target the whole neighbourhood counts; several pins are spread apart (see pickCountries)
+  const pin = { c, group: g, head, ring, tag, mesh: head.mesh, j: head, r: Fl.level === 1 ? 2.4 : 1.0, planted: null };
   Fl.pins.push(pin); sfx.tap();
   return pin;
 }
@@ -89,9 +91,16 @@ const factLines = c => [`${contName(c.cont)}`, `${tr('flCapital')}: ${capOf(c)}`
 /* ---------- rounds ---------- */
 function setPrompt(fn) { Fl.promptFn = fn; say(fn()); }
 const flagItem = c => ({ key: 'f' + c.id, make: () => { const j = new Juicy(sharedMesh(flagMat(c.id))); j.cid = c.id; return j; }, trayBase: 1, base: 1 });
+// countries for a round, spread out on the map so pins (and planted flags) never sit on top of each other
 function pickCountries(n) {
-  const pool = COUNTRIES.filter(c => (Fl.level === 1 ? c.easy : true) && !Fl.recent.includes(c.id));
-  const out = shuffle(pool.slice()).slice(0, n);
+  const pool = shuffle(COUNTRIES.filter(c => (Fl.level === 1 ? c.easy : true) && !Fl.recent.includes(c.id)));
+  const pos = c => toMap(c.lon, c.lat), far = (a, list, d) => list.every(b => { const [x1, y1] = pos(a), [x2, y2] = pos(b); return Math.hypot(x1 - x2, y1 - y2) >= d; });
+  let out = [];
+  for (const d of [Fl.level === 3 ? 1.6 : 1.15, 0.9, 0]) {
+    out = [];
+    for (const c of pool) { if (out.length < n && far(c, out, d)) out.push(c); }
+    if (out.length === n) break;
+  }
   Fl.recent = out.map(c => c.id).concat(Fl.recent).slice(0, 12);
   return out;
 }
@@ -212,7 +221,12 @@ export const flagsGame = {
   update(dt, t) {
     if (!Fl.map) return;
     Fl.map.conts.forEach((j, i) => { j.sc.t = drag.hover && drag.hover.cont === i ? 1.04 : 1; });
-    for (const pin of Fl.pins) pin.head.sc.t = drag.hover === pin ? 1.5 : pin.planted ? 1 : 1 + 0.12 * Math.sin(t * 5);
+    for (const pin of Fl.pins) {
+      const hov = drag.hover === pin, open = !pin.planted && (Fl.level !== 1 || pin === Fl.curPin);
+      pin.head.sc.t = hov ? 1.4 : pin.planted ? 1 : 1 + 0.1 * Math.sin(t * 5);
+      pin.ring.sc.t = !open ? 0.0001 : hov ? 1.35 : 1 + 0.08 * Math.sin(t * 4 + pin.c.lon);
+      const m = pinRingMat(hov).mat; if (pin.ring.mesh.material !== m) pin.ring.mesh.material = m;
+    }
   },
   pointer(o) {
     if (!o || !Fl.map) return;
