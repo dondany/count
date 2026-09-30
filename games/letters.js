@@ -1,4 +1,6 @@
-// Handwriting strokes for the English alphabet, in the order and direction children are taught to write them.
+// Handwriting strokes for the English alphabet, in the order and direction children are taught to write them
+// (ball-and-stick print as in Zaner-Bloser / D'Nealian-style workbooks: start at the top, circles go counter-clockwise from
+// 2 o'clock, and lowercase "down, back up and over" letters are one movement that retraces the stem).
 // Units: y points down; capitals are 0..100 tall; lowercase has x-height 45..100, ascenders from 0, descenders to 135.
 // Each letter is a list of strokes (one stroke = one continuous finger movement); each stroke is a list of [x, y] points.
 
@@ -41,27 +43,27 @@ export const UPPER = {
 };
 
 export const LOWER = {
-  a: [A(36, 72, 26, 27, -20, -340), L(62, 45, 62, 100)],
-  b: [L(10, 0, 10, 100), A(37, 72, 27, 27, 180, 540)],
+  a: [J(A(36, 72, 26, 27, -20, -340), L(62, 45, 62, 100))], // circle back, up, down — one movement
+  b: [J(L(10, 0, 10, 100, 10, 72), A(37, 72, 27, 27, 180, 540))], // down, back up, circle forward
   c: [A(38, 72, 27, 27, -35, -325)],
-  d: [A(36, 72, 26, 27, -20, -340), L(62, 0, 62, 100)],
+  d: [J(A(36, 72, 26, 27, -20, -340), L(62, 0, 62, 100))], // circle back, up high, down
   e: [J(L(10, 72, 64, 72), A(37, 72, 27, 27, 0, -320))],
   f: [J(A(45, 20, 20, 20, -10, -180), L(25, 20, 25, 100)), L(5, 45, 50, 45)],
-  g: [A(36, 72, 26, 27, -20, -340), J(L(62, 45, 62, 118), A(40, 118, 22, 20, 0, 150))],
-  h: [L(10, 0, 10, 100), J(A(35, 68, 25, 23, 180, 360), L(60, 68, 60, 100))],
+  g: [J(A(36, 72, 26, 27, -20, -340), L(62, 45, 62, 118), A(40, 118, 22, 20, 0, 150))],
+  h: [J(L(10, 0, 10, 100, 10, 68), A(35, 68, 25, 23, 180, 360), L(60, 68, 60, 100))], // down, back up and over
   i: [L(30, 45, 30, 100), L(30, 22, 30, 23)],
   j: [J(L(40, 45, 40, 118), A(22, 118, 18, 18, 0, 160)), L(40, 22, 40, 23)],
-  k: [L(10, 0, 10, 100), L(52, 45, 10, 78), L(26, 66, 56, 100)],
+  k: [L(10, 0, 10, 100), L(52, 45, 14, 74, 56, 100)], // down, then in and out
   l: [L(20, 0, 20, 100)],
-  m: [L(8, 45, 8, 100), J(A(25, 66, 17, 20, 180, 360), L(42, 66, 42, 100)), J(A(59, 66, 17, 20, 180, 360), L(76, 66, 76, 100))],
-  n: [L(10, 45, 10, 100), J(A(34, 68, 24, 22, 180, 360), L(58, 68, 58, 100))],
+  m: [J(L(8, 45, 8, 100, 8, 66), A(25, 66, 17, 20, 180, 360), L(42, 66, 42, 100, 42, 66), A(59, 66, 17, 20, 180, 360), L(76, 66, 76, 100))], // down, up and over, up and over
+  n: [J(L(10, 45, 10, 100, 10, 68), A(34, 68, 24, 22, 180, 360), L(58, 68, 58, 100))],
   o: [A(37, 72, 27, 27, -90, -450)],
-  p: [L(10, 45, 10, 135), A(37, 72, 27, 27, 180, 540)],
-  q: [A(36, 72, 26, 27, -20, -340), L(62, 45, 62, 135)],
-  r: [L(10, 45, 10, 100), A(30, 70, 20, 22, 180, 310)],
+  p: [J(L(10, 45, 10, 135, 10, 72), A(37, 72, 27, 27, 180, 540))], // down, back up, circle forward
+  q: [J(A(36, 72, 26, 27, -20, -340), L(62, 45, 62, 135))],
+  r: [J(L(10, 45, 10, 100, 10, 70), A(30, 70, 20, 22, 180, 310))], // down, back up and over
   s: [J(A(36, 58, 22, 13, -25, -270), A(36, 85, 24, 15, -90, 160))],
   t: [J(L(25, 10, 25, 88), A(38, 88, 13, 12, 180, 20)), L(5, 45, 48, 45)],
-  u: [J(L(10, 45, 10, 78), A(34, 78, 24, 22, 180, 0), L(58, 78, 58, 45)), L(58, 45, 58, 100)],
+  u: [J(L(10, 45, 10, 78), A(34, 78, 24, 22, 180, 0), L(58, 78, 58, 45, 58, 100))], // down, around, up, down
   v: [L(5, 45, 32, 100, 60, 45)],
   w: [L(0, 45, 15, 100, 33, 62, 51, 100, 66, 45)],
   x: [L(5, 45, 58, 100), L(58, 45, 5, 100)],

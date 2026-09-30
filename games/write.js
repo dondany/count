@@ -45,16 +45,21 @@ function pointAt(st, s) {
   }
   return st.pts[0];
 }
-// closest point on the stroke, only looking a little behind / ahead of the progress (so a closing circle can't jump to the end)
+// closest point on the stroke, only looking a little ahead of the progress (so a closing circle can't jump to the end).
+// Where the path runs back over itself ("down, back up and over"), several parts are equally close:
+// take the earliest one still ahead, so the ink neither skips the turn nor gets stuck at it.
 function project(q, st, sMin, sMax) {
-  let best = { d: Infinity, s: 0 };
+  const hits = [];
   for (let k = 0; k < st.pts.length - 1; k++) {
     const s0 = st.cum[k], s1 = st.cum[k + 1]; if (s1 < sMin || s0 > sMax) continue;
     const [ax, ay] = st.pts[k], [bx, by] = st.pts[k + 1], dx = bx - ax, dy = by - ay, L2 = dx * dx + dy * dy || 1e-9;
-    const u = clamp(((q.x - ax) * dx + (q.y - ay) * dy) / L2, 0, 1), d = Math.hypot(q.x - (ax + dx * u), q.y - (ay + dy * u));
-    if (d < best.d) best = { d, s: s0 + (s1 - s0) * u };
+    let u = clamp(((q.x - ax) * dx + (q.y - ay) * dy) / L2, 0, 1);
+    if (s0 + (s1 - s0) * u < sMin) u = clamp((sMin - s0) / Math.max(1e-9, s1 - s0), 0, 1);
+    hits.push({ d: Math.hypot(q.x - (ax + dx * u), q.y - (ay + dy * u)), s: s0 + (s1 - s0) * u });
   }
-  return best;
+  if (!hits.length) return { d: Infinity, s: 0 };
+  const dMin = Math.min(...hits.map(h => h.d));
+  return hits.filter(h => h.d <= dMin + 0.12).reduce((a, b) => (b.s < a.s ? b : a));
 }
 
 /* ---------- board ---------- */
@@ -255,7 +260,7 @@ function advance(st, q) {
   lastQ = q.clone();
 }
 function step(st, q) {
-  const pr = project(q, st, Wr.prog - 0.3, Wr.prog + 1.3);
+  const pr = project(q, st, Wr.prog, Wr.prog + 1.3);
   if (pr.d < TOL && pr.s > Wr.prog) {
     Wr.prog = pr.s; Wr.dirty = true;
     if (Wr.prog - lastTick > 0.5) { lastTick = Wr.prog; sfx.dot(Math.floor(Wr.prog * 2) % 10); }
