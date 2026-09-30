@@ -18,6 +18,10 @@ document.title = 'harness-start'; let ticks = 0; setInterval(() => { ticks++; if
 (async () => {
   await until(() => A() && A().current() && (A().current().id === plan || plan === 'parents'));
   window.__log = []; f.contentWindow.__sayLog = [];
+  if (q.get('voice')) { // capture what would really be spoken
+    const W = f.contentWindow; A().store && (A().store.voice = true);
+    W.__spoken = []; W.speechSynthesis.speak = u => { W.__spoken.push(u.text + ' [' + u.lang + ']'); setTimeout(() => u.onstart && u.onstart(), 50); }; W.speechSynthesis.cancel = () => W.__spoken.push('(cancel)');
+  }
   setInterval(() => { if (A()) A().S.lastAct = A().S.time; }, 100);
   setInterval(() => { try { const c = A().colState, b = A().blkState; document.title = JSON.stringify({ t: +A().S.time.toFixed(1), cur: A().current().id, busy: c.busy, active: c.active, P: c.P && (c.P.a + c.P.op + c.P.b), bb: b.busy, N: b.N, counts: b.counts, say: f.contentWindow.document.getElementById('bubbleText').textContent.slice(0, 90), st: (({ daily, levels, freePacks }) => ({ daily, levels, freePacks }))(JSON.parse(f.contentWindow.localStorage.getItem('paperSchool.v1') || '{}')) }); } catch (e) { document.title = 'E ' + e.message; } }, 200);
   const C = () => A().colState, B = () => A().blkState, stop = async ms => { await sleep(ms); f.contentWindow.__pause = true; };
@@ -141,6 +145,7 @@ document.title = 'harness-start'; let ticks = 0; setInterval(() => { ticks++; if
       await sleep(+q.get('gap') || 450);
     }
     if (q.get('log')) console.log('SAYLOG\n' + (f.contentWindow.__sayLog || []).join('\n'));
+    if (q.get('voice')) console.log('SPOKEN\n' + (f.contentWindow.__spoken || []).join('\n'));
     return stop(+q.get('w') || 800);
   } catch (e) { console.log('HARNESS ERR ' + e.stack); }
 })();

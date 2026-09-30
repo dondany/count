@@ -209,7 +209,7 @@ async function boot() {
   const play = $('#play'); play.disabled = false; play.textContent = tr('play');
   play.addEventListener('click', start);
   // test hooks: ?test exposes the app, ?drive steps the simulation from timers, ?auto skips the title screen
-  if (q.has('test')) { store.voice = false; window.__app = { go, S, games: GAMES, hub, current: () => current, colState, blkState, clockState, fracState, flagsState, wordsState, animalsState, timesState, spaceState, patternState, writeState, spawnFromTray, openParents, drag, trayKeys: () => tray ? tray.items.map(i => i.key) : [] }; }
+  if (q.has('test')) { store.voice = false; window.__app = { go, S, games: GAMES, hub, current: () => current, colState, blkState, clockState, fracState, flagsState, wordsState, animalsState, timesState, spaceState, patternState, writeState, spawnFromTray, openParents, drag, store, trayKeys: () => tray ? tray.items.map(i => i.key) : [] }; }
   if (q.has('drive')) setInterval(() => { if (!window.__pause) manualStep(3); }, 30);
   if (q.has('auto')) start();
 }
