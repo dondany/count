@@ -62,29 +62,10 @@ function pickVoice(l) {
   return (voices[l] = mine.find(v => nice.test(v.name)) || mine[0] || null);
 }
 if ('speechSynthesis' in window) speechSynthesis.onvoiceschanged = () => { for (const k in voices) delete voices[k]; };
-const busy = () => speechSynthesis.speaking || speechSynthesis.pending;
-export function stopSpeech() { if ('speechSynthesis' in window && busy()) speechSynthesis.cancel(); }
-// Browsers drop speech in a few quiet ways, so this is defensive:
-//  - an utterance nobody references can be garbage-collected before it plays (Chrome) -> keep it in `live`;
-//  - cancel() on an idle engine can leave the queue paused (Chrome/Safari) -> only cancel when busy, then resume();
-//  - a line that never starts is retried once.
+export function stopSpeech() { if ('speechSynthesis' in window) speechSynthesis.cancel(); }
+// lines are kept referenced until they finish: Chrome can garbage-collect a queued utterance and drop it silently
 const live = new Set();
 let speakTok = 0;
-function utter(t, tok, retry) {
-  if (tok !== speakTok) return;
-  const u = new SpeechSynthesisUtterance(t), v = pickVoice(lang);
-  u.rate = 0.95; u.pitch = 1.2; u.lang = v ? v.lang : (lang === 'pl' ? 'pl-PL' : 'en-US');
-  if (v) u.voice = v;
-  let started = false;
-  u.onstart = () => { started = true; };
-  u.onend = u.onerror = () => live.delete(u);
-  live.add(u);
-  speechSynthesis.resume(); speechSynthesis.speak(u);
-  if (retry) setTimeout(() => {
-    if (started || tok !== speakTok || !store.voice) return;
-    live.delete(u); speechSynthesis.cancel(); setTimeout(() => utter(t, tok, false), 120);
-  }, 1500);
-}
 export function speak(html) {
   if (!store.voice || !('speechSynthesis' in window)) return;
   const eq = lang === 'pl' ? ' równa się ' : ' equals ';
@@ -94,7 +75,14 @@ export function speak(html) {
   if (!/[.!?…]$/.test(t)) t += '.'; // a lone word ("Polska") is spoken more reliably as a sentence
   try {
     const tok = ++speakTok;
-    if (busy()) { speechSynthesis.cancel(); setTimeout(() => utter(t, tok, true), 120); }
-    else utter(t, tok, true);
+    speechSynthesis.cancel();
+    setTimeout(() => {
+      if (tok !== speakTok) return; // a newer line replaced this one
+      const u = new SpeechSynthesisUtterance(t), v = pickVoice(lang);
+      u.rate = 0.95; u.pitch = 1.2; u.lang = v ? v.lang : (lang === 'pl' ? 'pl-PL' : 'en-US');
+      if (v) u.voice = v;
+      u.onend = u.onerror = () => live.delete(u);
+      live.add(u); speechSynthesis.speak(u);
+    }, 150);
   } catch (e) {}
 }

@@ -18,6 +18,14 @@ document.title = 'harness-start'; let ticks = 0; setInterval(() => { ticks++; if
 (async () => {
   await until(() => A() && A().current() && (A().current().id === plan || plan === 'parents'));
   window.__log = []; f.contentWindow.__sayLog = [];
+  if (q.get('realvoice')) { // let the real speech engine run and record what it does with each line
+    const W = f.contentWindow; A().store.voice = true; W.__spoken = [];
+    const orig = W.speechSynthesis.speak.bind(W.speechSynthesis), t0 = performance.now(), ts = () => ((performance.now() - t0) / 1000).toFixed(1) + 's';
+    W.speechSynthesis.speak = u => { const n = u.text; W.__spoken.push(ts() + ' speak ' + n);
+      u.addEventListener('start', () => W.__spoken.push(ts() + ' START ' + n)); u.addEventListener('end', () => W.__spoken.push(ts() + ' end ' + n));
+      u.addEventListener('error', e => W.__spoken.push(ts() + ' ERROR ' + e.error + ' ' + n)); orig(u); };
+    const oc = W.speechSynthesis.cancel.bind(W.speechSynthesis); W.speechSynthesis.cancel = () => { W.__spoken.push(ts() + ' (cancel)'); oc(); };
+  }
   if (q.get('voice')) { // capture what would really be spoken
     const W = f.contentWindow; A().store && (A().store.voice = true);
     W.__spoken = []; W.speechSynthesis.speak = u => { W.__spoken.push(u.text + ' [' + u.lang + ']'); setTimeout(() => u.onstart && u.onstart(), 50); }; W.speechSynthesis.cancel = () => W.__spoken.push('(cancel)');
@@ -145,7 +153,7 @@ document.title = 'harness-start'; let ticks = 0; setInterval(() => { ticks++; if
       await sleep(+q.get('gap') || 450);
     }
     if (q.get('log')) console.log('SAYLOG\n' + (f.contentWindow.__sayLog || []).join('\n'));
-    if (q.get('voice')) console.log('SPOKEN\n' + (f.contentWindow.__spoken || []).join('\n'));
+    if (q.get('voice') || q.get('realvoice')) console.log('SPOKEN\n' + (f.contentWindow.__spoken || []).join('\n'));
     return stop(+q.get('w') || 800);
   } catch (e) { console.log('HARNESS ERR ' + e.stack); }
 })();
