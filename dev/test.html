@@ -99,6 +99,11 @@ document.title = 'harness-start'; let ticks = 0; setInterval(() => { ticks++; if
       }
       else if (plan === 'flags') {
         const fl = Fl(), tg = A().current().dragOpts().targets();
+        if (fl.level === 4) {
+          const eu = fl.eu, ids = Object.keys(eu.countries), id = s === 'ok' ? fl.cur.id : ids.find(x => x !== fl.cur.id && !eu.countries[x].g.tiny && !eu.countries[x].painted);
+          const [lx, ly] = eu.countries[id].g.label, pt = A().drag.pt; pt.set(lx, ly, 0); eu.group.localToWorld(pt);
+          drop('f' + fl.cur.id, tg[0]);
+        }
         if (fl.level === 1) drop(s === 'ok' ? 'f' + fl.cur.id : A().trayKeys().find(x => x !== 'f' + fl.cur.id), tg[0]);
         if (fl.level === 2) drop('f' + fl.cur.id, tg.find(t => (t.cont === fl.cur.cont) === (s === 'ok')));
         if (fl.level === 3) { const pin = fl.pins.find(p => !p.planted); const other = fl.pins.find(p => !p.planted && p !== pin); drop('f' + (s === 'ok' ? pin.c.id : other.c.id), pin); }

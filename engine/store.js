@@ -3,7 +3,7 @@
 const KEY = 'paperSchool.v1';
 export const store = {
   lang: null, sound: true, voice: true, stars: {}, spent: 0, stickers: [], freePacks: 0,
-  levels: {}, stats: {}, adaptive: true, daily: null, scene: [], hubCat: 'math',
+  levels: {}, stats: {}, adaptive: true, daily: null, scene: [], hubCat: 'math', europe: [],
 };
 try { Object.assign(store, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch (e) {}
 try { // carry over stars from the original single-game "Paper Sums"

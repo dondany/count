@@ -1,5 +1,5 @@
 // Pip's Paper School: boots the engine, wires the HUD and switches between the hub and the activities.
-import { S, resize, startLoop, manualStep, setPointerHandler, addUpdate, onLayout, startDrag } from './engine/core.js';
+import { S, resize, startLoop, manualStep, setPointerHandler, addUpdate, onLayout, startDrag, drag } from './engine/core.js';
 import { initDigits } from './engine/paper.js';
 import { buildWorld } from './engine/world.js';
 import { buildPip, say, pip, owlHop, owlCheer } from './engine/pip.js';
@@ -158,7 +158,7 @@ function renderParents() {
   $('#pAdaptive').addEventListener('change', e => { store.adaptive = e.target.checked; save(); });
   $('#pReset').addEventListener('click', () => {
     if (!confirm(tr('pcResetAsk'))) return;
-    Object.assign(store, { stars: {}, spent: 0, stickers: [], freePacks: 0, levels: {}, stats: {}, daily: null, scene: [] }); save();
+    Object.assign(store, { stars: {}, spent: 0, stickers: [], freePacks: 0, levels: {}, stats: {}, daily: null, scene: [], europe: [], write: {} }); save();
     refreshStars(); renderParents(); if (current === hub) { hub.exit(); hub.enter(); }
   });
 }
@@ -209,7 +209,7 @@ async function boot() {
   const play = $('#play'); play.disabled = false; play.textContent = tr('play');
   play.addEventListener('click', start);
   // test hooks: ?test exposes the app, ?drive steps the simulation from timers, ?auto skips the title screen
-  if (q.has('test')) { store.voice = false; window.__app = { go, S, games: GAMES, hub, current: () => current, colState, blkState, clockState, fracState, flagsState, wordsState, animalsState, timesState, spaceState, patternState, writeState, spawnFromTray, openParents, trayKeys: () => tray ? tray.items.map(i => i.key) : [] }; }
+  if (q.has('test')) { store.voice = false; window.__app = { go, S, games: GAMES, hub, current: () => current, colState, blkState, clockState, fracState, flagsState, wordsState, animalsState, timesState, spaceState, patternState, writeState, spawnFromTray, openParents, drag, trayKeys: () => tray ? tray.items.map(i => i.key) : [] }; }
   if (q.has('drive')) setInterval(() => { if (!window.__pause) manualStep(3); }, 30);
   if (q.has('auto')) start();
 }
