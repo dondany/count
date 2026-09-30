@@ -2,7 +2,7 @@
 import * as THREE from 'three';
 import { rand, rint, pick, lerp, Juicy, tween, wait, ease, unjuice } from '../engine/util.js';
 import { INK, cutTex, cutShared, sharedMesh, paperMat, paint, text, segs, rr, tornRect, softShadow, disposeMesh } from '../engine/paper.js';
-import { scene, S, burst, drag, startGrab, setNDC, atZ, renderer } from '../engine/core.js';
+import { scene, S, burst, drag, startGrab, cancelGrab, setNDC, atZ, renderer } from '../engine/core.js';
 import { sfx } from '../engine/audio.js';
 import { tr, lang, contName, cap1 } from '../engine/i18n.js';
 import { say, owlTilt, owlCheer } from '../engine/pip.js';
@@ -13,7 +13,7 @@ import { recordMistake } from '../engine/stats.js';
 import { COUNTRIES, FLAGS } from './flagsData.js';
 import { store, save } from '../engine/store.js';
 import { EU_INFO, EU_IDS, MAP_W as EU_W, MAP_H as EU_H, geo, buildEurope, disposeEurope, paintCountry, showGlow, countryAt,
-  inWindow, zoomTo, zoomLevel, panBy, updateEurope, highlight } from './europeMap.js';
+  inWindow, zoomTo, zoomLevel, pinchTo, panBy, updateEurope, highlight } from './europeMap.js';
 import { MW, toMap, pinMat, pinRingMat, poleMat, tagMat, buildMap, disposeMap, relabelMap } from './worldMap.js';
 
 const V3 = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
@@ -284,6 +284,28 @@ renderer.domElement.addEventListener('wheel', e => {
   e.preventDefault();
   zoomTo(Fl.eu, zoomLevel(Fl.eu) * (e.deltaY < 0 ? 1.2 : 1 / 1.2), euLocal(pt));
 }, { passive: false });
+// two-finger pinch zooms (and moves) the Europe map on touch screens
+const touches = new Map(); let pinch = null;
+const touchPt = e => { setNDC(e); return atZ(0.2); };
+const midOf = (a, b) => a.clone().add(b).multiplyScalar(0.5);
+renderer.domElement.addEventListener('pointerdown', e => {
+  if (!Fl.eu || e.pointerType === 'mouse') return;
+  touches.set(e.pointerId, touchPt(e));
+  if (touches.size !== 2 || drag.piece) return;
+  const [a, b] = [...touches.values()], mid = midOf(a, b);
+  if (!inWindow(Fl.eu, mid)) return;
+  cancelGrab(); // the first finger had started a pan
+  pinch = { d0: Math.max(0.3, a.distanceTo(b)), z0: zoomLevel(Fl.eu), f: euLocal(mid) };
+});
+addEventListener('pointermove', e => {
+  if (!touches.has(e.pointerId)) return;
+  touches.set(e.pointerId, touchPt(e));
+  if (!pinch || !Fl.eu || touches.size < 2) return;
+  const [a, b] = [...touches.values()];
+  pinchTo(Fl.eu, pinch.z0 * a.distanceTo(b) / pinch.d0, pinch.f, midOf(a, b));
+});
+const liftTouch = e => { touches.delete(e.pointerId); if (touches.size < 2) pinch = null; };
+addEventListener('pointerup', liftTouch); addEventListener('pointercancel', liftTouch);
 export const flagsState = Fl;
 export const flagsGame = {
   id: 'flags',

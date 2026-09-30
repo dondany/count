@@ -156,6 +156,13 @@ export function zoomTo(E, z, at = null, centre = false) {
   E.z = z; clampView(E);
 }
 export const zoomLevel = E => E.z;
+// two-finger pinch: zoom to z and keep map point f (map-local) under the fingers' midpoint (world); no easing, it follows the fingers
+export function pinchTo(E, z, f, midWorld) {
+  E.z = Math.max(1, Math.min(MAX_ZOOM, z));
+  const m = E.root.worldToLocal(midWorld.clone());
+  E.v.set(f.x - m.x / E.z, f.y - m.y / E.z); clampView(E);
+  E.zc = E.z; E.vc.copy(E.v);
+}
 // pan by a world-space delta
 export function panBy(E, dx, dy) { const s = E.root.scale.x * E.z; E.v.x -= dx / s; E.v.y -= dy / s; clampView(E); }
 export function updateEurope(E, dt) {

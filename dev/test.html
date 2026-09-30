@@ -101,6 +101,14 @@ document.title = 'harness-start'; let ticks = 0; setInterval(() => { ticks++; if
         const fl = Fl(), tg = A().current().dragOpts().targets();
         if (fl.level === 4 && s === 'zin') { A().current().pointer({ userData: { kind: 'euZoom', dir: 1, j: { punch() {} } } }, {}); continue; }
         if (fl.level === 4 && s === 'hint') { A().current().help(); continue; }
+        if (fl.level === 4 && s === 'pinch') { // two synthetic touch fingers spreading apart over the map
+          const W = f.contentWindow, cv = W.document.querySelector('#app canvas'), ev = (type, id, x, y) => cv.dispatchEvent(new W.PointerEvent(type, { pointerId: id, pointerType: 'touch', clientX: x, clientY: y, bubbles: true, isPrimary: id === 1 }));
+          const r = cv.getBoundingClientRect(), cx = r.width * 0.42, cy = r.height * 0.55;
+          ev('pointerdown', 1, cx - 30, cy); ev('pointerdown', 2, cx + 30, cy);
+          for (let k = 1; k <= 8; k++) { ev('pointermove', 1, cx - 30 - k * 15, cy - k * 4); ev('pointermove', 2, cx + 30 + k * 15, cy + k * 4); await sleep(40); }
+          ev('pointerup', 1, cx - 150, cy); ev('pointerup', 2, cx + 150, cy);
+          console.log('ZOOM ' + A().flagsState.eu.z.toFixed(2)); continue;
+        }
         if (fl.level === 4) {
           const eu = fl.eu, ids = Object.keys(eu.countries), id = s === 'ok' ? fl.cur.id : ids.find(x => x !== fl.cur.id && !eu.countries[x].g.tiny && !eu.countries[x].painted);
           const [lx, ly] = eu.countries[id].g.label, pt = A().drag.pt; pt.set(lx, ly, 0); eu.group.localToWorld(pt);

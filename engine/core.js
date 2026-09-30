@@ -120,6 +120,8 @@ function updateDrag(dt) {
 let grab = null;
 export function startGrab(e, onMove, onEnd) { grab = { id: e.pointerId, onMove, onEnd }; }
 function endGrab() { const g = grab; grab = null; if (g) g.onEnd(); }
+// drop the current grab without its onEnd (e.g. a second finger turned a pan into a pinch)
+export function cancelGrab() { grab = null; }
 
 /* ---------- pointer events ---------- */
 let pointerHandler = null;
