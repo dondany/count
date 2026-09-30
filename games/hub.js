@@ -88,8 +88,14 @@ const CARDS = [
     ctx.save(); ctx.translate(0.55, 0.55); ctx.scale(0.35, 0.35); ALL_STICKERS.find(s => s.id === 'a:panda').draw(ctx, P); ctx.restore();
   } },
 ];
+CARDS.push({ id: 'write', name: 'gWrite', bg: '#f9e3b4', draw: (ctx, P) => {
+  rr(ctx, -1.7, -1.3, 3.4, 2.6, 0.2); paint(ctx, P, '#fffaf0', { shadow: false });
+  ctx.strokeStyle = 'rgba(80,140,210,.45)'; ctx.lineWidth = 0.04; for (const y of [-0.9, 0.9]) { ctx.beginPath(); ctx.moveTo(-1.5, y); ctx.lineTo(1.5, y); ctx.stroke(); }
+  text(ctx, P, 'A', -0.75, 0, 1.6, '#e8574a'); text(ctx, P, 'a', 0.35, 0.25, 1.2, '#2f9e97');
+  ctx.save(); ctx.translate(1.05, -0.4); ctx.rotate(0.7); rr(ctx, -0.12, -0.8, 0.24, 1.3, 0.05); paint(ctx, P, '#f2b33d'); ctx.beginPath(); ctx.moveTo(-0.12, 0.5); ctx.lineTo(0, 0.8); ctx.lineTo(0.12, 0.5); ctx.closePath(); paint(ctx, P, '#f3cf9b'); ctx.restore();
+} });
 export const nameKey = id => (CARDS.find(c => c.id === id) || {}).name;
-const CATS = { math: ['sums', 'minus', 'blocks', 'times', 'clock', 'frac'], world: ['words', 'flags', 'animals', 'space'], play: ['pattern', 'scene', 'stickers'] };
+const CATS = { math: ['sums', 'minus', 'blocks', 'times', 'clock', 'frac'], world: ['words', 'write', 'flags', 'animals', 'space'], play: ['pattern', 'scene', 'stickers'] };
 const catOf = id => Object.keys(CATS).find(k => CATS[k].includes(id));
 const shown = () => CATS[store.hubCat] ? CATS[store.hubCat].map(id => CARDS.find(c => c.id === id)) : CARDS.slice(0, 6);
 const ribbonMat = (txt, done) => cutShared('ribbon' + txt, 2.6, 0.7, (ctx, P) => {

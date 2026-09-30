@@ -11,10 +11,11 @@ Playful, paper-cut-out maths games for kids aged 5–9, built with three.js. Eng
 - **Clock** (`#clock`): *set* rounds — drag the paper hands (the long hand clicks in 5-minute steps and drags the hour hand along like real gears), then press Ready; *read* rounds — drag the matching digital time onto the clock. Levels: o'clock · half & quarter · 5 minutes. Times in words ("quarter past 3", "wpół do czwartej").
 - **Fractions** (`#frac`): *make* rounds — drag pizza slices or chocolate pieces onto the plate; *read* rounds — count the pieces and write the fraction with digit tiles. Fractions in words ("three quarters", "trzy czwarte").
 - **Words** (`#words`): look at a paper picture, listen to Pip and spell the word with letter tiles (Polish letters included). Levels: trace the letters · spell · long words with decoy letters.
+- **Writing** (`#write`): trace English letters (ABC and abc) with a finger — each line starts at a numbered green dot and must follow the grey path in the taught order and direction; Pip first shows how the letter is written.
 - **Animals** (`#animals`): drag 17 paper animals (kangaroo, panda, żubr…) onto the continent where they live.
 - **Stickers** (`#stickers`): spend stars on sticker packs and fill a 40-sticker album; tap a sticker to hear its name.
 - **Times garden** (`#times`): multiplication as rows of paper flowers — plant 3 rows of 4, count on in 4s (4, 8, 12), write the answer. Levels: ×2 ×5 ×10 · ×2–×5 · ×6–×9.
-- **Solar system** (`#space`): put eight smiling planets in order from the Sun (with ghost hints · without · planet quiz), with a fact for each.
+- **Solar system** (`#space`): an animated paper solar system. *Explore*: planets circle the Sun on their orbits — tap one for its name and a fact. *Place*: drag each planet onto its orbit, where it starts circling. *Quiz*: answer planet questions.
 - **Pattern train** (`#pattern`): finish the pattern on the wagons — shapes and colours, trickier patterns, then number patterns (2, 4, 6, ?).
 - **Paper scene** (`#scene`): free play — drag pictures and collected stickers onto a paper landscape, tap to resize, snap a "photo". Saved on the device.
 - **Flags** (`#flags`): a paper world map with ~40 countries. Flags: drag the right flag onto a country's pin · Continents: drag a flag onto its continent · World: match several "?" pins to their flags. Pip tells you the continent and capital each time.
@@ -53,8 +54,8 @@ engine/           shared by every activity
   stats.js        round stats, mistakes, adaptive levels, daily challenge
   world.js        sky, sun, hills, trees
 games/            hub.js, column.js (adding + taking away), blocks.js, clock.js, fractions.js, flags.js, words.js,
-                  animals.js, stickers.js, times.js, space.js, pattern.js, scene.js;
-                  shared: panel.js (ten-frames), worldMap.js, pictures.js, flagsData.js
+                  animals.js, stickers.js, times.js, space.js, pattern.js, scene.js, write.js;
+                  shared: panel.js (ten-frames), worldMap.js, pictures.js, flagsData.js, letters.js (stroke order)
 dev/test.html     headless test harness (drives the games via ?test&drive hooks)
 ```
 

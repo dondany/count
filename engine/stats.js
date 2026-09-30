@@ -27,7 +27,7 @@ export function suggestLevel(id, level, levelIds) {
 }
 
 // Daily challenge: one activity per calendar day, win 3 rounds of it for a free sticker pack.
-const DAILY_GAMES = ['sums', 'minus', 'blocks', 'times', 'clock', 'frac', 'words', 'flags', 'animals', 'space', 'pattern'];
+const DAILY_GAMES = ['sums', 'minus', 'blocks', 'times', 'clock', 'frac', 'words', 'write', 'flags', 'animals', 'space', 'pattern'];
 const localDate = () => { const d = new Date(); return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`; };
 export function daily() {
   const date = localDate();

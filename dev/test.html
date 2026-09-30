@@ -23,7 +23,7 @@ document.title = 'harness-start'; let ticks = 0; setInterval(() => { ticks++; if
   const C = () => A().colState, B = () => A().blkState, stop = async ms => { await sleep(ms); f.contentWindow.__pause = true; };
   try {
     if (plan === 'hub' && q.get('nav')) {
-      const seq = ['times', 'space', 'hub', 'pattern', 'scene', 'sums', 'words', 'animals', 'stickers', 'flags', 'clock', 'frac', 'minus', 'blocks', 'space', 'hub'];
+      const seq = ['write', 'space', 'times', 'hub', 'pattern', 'scene', 'sums', 'words', 'animals', 'stickers', 'flags', 'clock', 'frac', 'minus', 'blocks', 'space', 'hub'];
       for (const id of seq) {
         await A().go(id); await sleep(700);
         if (id === 'sums' || id === 'minus') { A().current().setLevel(3); await sleep(500); }
@@ -39,7 +39,7 @@ document.title = 'harness-start'; let ticks = 0; setInterval(() => { ticks++; if
     const K = () => A().clockState, Fr = () => A().fracState, Fl = () => A().flagsState;
     const ready = () => plan === 'blocks' ? B().mat && !B().busy : plan === 'clock' ? K().clock && !K().busy : plan === 'frac' ? Fr().stage && !Fr().busy
       : plan === 'flags' ? Fl().map && !Fl().busy : plan === 'words' ? Wd().board && !Wd().busy : plan === 'animals' ? An().map && !An().busy
-      : plan === 'stickers' || plan === 'scene' || plan === 'parents' ? true : plan === 'times' ? Tm().plot && !Tm().busy : plan === 'space' ? Spc().board && !Spc().busy
+      : plan === 'write' ? A().writeState.board && !A().writeState.busy : plan === 'stickers' || plan === 'scene' || plan === 'parents' ? true : plan === 'times' ? Tm().plot && !Tm().busy : plan === 'space' ? Spc().board && !Spc().busy
       : plan === 'pattern' ? Pt().train && !Pt().busy : C().board && !C().busy && C().P;
     await until(ready);
     if (q.get('level')) { A().current().setLevel(+q.get('level')); await sleep(300); await until(ready); }
@@ -61,6 +61,10 @@ document.title = 'harness-start'; let ticks = 0; setInterval(() => { ticks++; if
       else if (plan === 'pattern') {
         const pt = Pt(), sl = pt.slots.find(x => !x.tile); if (!sl) continue;
         drop(s === 'ok' ? sl.want : A().trayKeys().find(k => k !== sl.want), sl);
+      }
+      else if (plan === 'write') {
+        const w = A().writeState;
+        if (s === 'ok') w.simulate(); if (s === 'rev') w.simulate(true); if (s === 'half') w.simulate(false, 0.5); if (s === 'demo') w.round;
       }
       else if (plan === 'scene') { const keys = A().trayKeys(); drop(keys[+s % keys.length], A().current().dragOpts().targets()[0]); }
       else if (plan === 'parents') {

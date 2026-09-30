@@ -23,11 +23,12 @@ import { timesGame, timesState } from './games/times.js';
 import { spaceGame, spaceState } from './games/space.js';
 import { patternGame, patternState } from './games/pattern.js';
 import { sceneGame } from './games/scene.js';
+import { writeGame, writeState } from './games/write.js';
 import { hub, nameKey } from './games/hub.js';
 
 const $ = s => document.querySelector(s);
 const GAMES = { sums: sumsGame, minus: minusGame, blocks: blocksGame, clock: clockGame, frac: fracGame, flags: flagsGame, words: wordsGame, animals: animalsGame, stickers: stickersGame,
-  times: timesGame, space: spaceGame, pattern: patternGame, scene: sceneGame };
+  times: timesGame, space: spaceGame, pattern: patternGame, scene: sceneGame, write: writeGame };
 let current = null, switching = false;
 
 /* ---------- switching activities (with #hash links you can share) ---------- */
@@ -208,7 +209,7 @@ async function boot() {
   const play = $('#play'); play.disabled = false; play.textContent = tr('play');
   play.addEventListener('click', start);
   // test hooks: ?test exposes the app, ?drive steps the simulation from timers, ?auto skips the title screen
-  if (q.has('test')) { store.voice = false; window.__app = { go, S, games: GAMES, hub, current: () => current, colState, blkState, clockState, fracState, flagsState, wordsState, animalsState, timesState, spaceState, patternState, spawnFromTray, openParents, trayKeys: () => tray ? tray.items.map(i => i.key) : [] }; }
+  if (q.has('test')) { store.voice = false; window.__app = { go, S, games: GAMES, hub, current: () => current, colState, blkState, clockState, fracState, flagsState, wordsState, animalsState, timesState, spaceState, patternState, writeState, spawnFromTray, openParents, trayKeys: () => tray ? tray.items.map(i => i.key) : [] }; }
   if (q.has('drive')) setInterval(() => { if (!window.__pause) manualStep(3); }, 30);
   if (q.has('auto')) start();
 }
