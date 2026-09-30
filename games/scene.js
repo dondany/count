@@ -5,7 +5,7 @@ import { INK, cutShared, sharedMesh, paint, rr, tornRect, starPath, softShadow, 
 import { scene, S, burst, drag, startDrag } from '../engine/core.js';
 import { sfx } from '../engine/audio.js';
 import { tr } from '../engine/i18n.js';
-import { say, owlCheer } from '../engine/pip.js';
+import { say, note, owlCheer } from '../engine/pip.js';
 import { setTray, flyHome } from '../engine/tray.js';
 import { setPencil } from '../engine/pencil.js';
 import { store, save } from '../engine/store.js';
@@ -104,7 +104,7 @@ function snap() {
   document.body.appendChild(fl); requestAnimationFrame(() => { fl.style.opacity = '0'; }); setTimeout(() => fl.remove(), 700);
   sfx.paper(); sfx.star(1); owlCheer();
   Sc.items.forEach((j, i) => wait(0.03 * i).then(() => j.pop(0.4)));
-  say(tr('scSnap'));
+  note(tr('scSnap'));
 }
 function clearAll() {
   if (S.time - Sc.clearArmed > 3) { Sc.clearArmed = S.time; say(tr('scClearAsk')); return; }

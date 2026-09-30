@@ -5,7 +5,7 @@ import { INK, DIGIT_COLORS, cutTex, cutMesh, cutShared, sharedMesh, paperMat, pa
 import { scene, S, burst, startGrab } from '../engine/core.js';
 import { sfx } from '../engine/audio.js';
 import { tr, timeWords, timeDigits } from '../engine/i18n.js';
-import { say, owlTilt, owlCheer } from '../engine/pip.js';
+import { say, note, firstTime, owlTilt, owlCheer } from '../engine/pip.js';
 import { setPencil } from '../engine/pencil.js';
 import { setTray, setTrayGlow, flyHome } from '../engine/tray.js';
 import { celebrate, wiggleHelp } from '../engine/ui.js';
@@ -154,6 +154,9 @@ function distractors(T) {
 
 /* ---------- rounds ---------- */
 function setPrompt(fn) { K.promptFn = fn; say(fn()); }
+// explain once per visit, then say only the short version (or show the text silently when there is no short one)
+function intro(key, full, short = null) { const first = firstTime(key), fn = first || !short ? full : short; K.promptFn = fn; if (first || short) say(fn()); else note(fn()); }
+function quiet(fn) { K.promptFn = fn; note(fn()); }
 function pickTarget() {
   for (let i = 0; i < 40; i++) {
     const h = rint(1, 12), m = K.level === 1 ? 0 : K.level === 2 ? pick([0, 15, 30, 30, 45]) : rint(0, 11) * 5;
@@ -177,7 +180,7 @@ async function startRound() {
     setTray(null);
     let T0; do { T0 = (rint(1, 12) % 12) * 60 + (K.level === 1 ? 0 : rint(0, 11) * 5); } while (T0 === K.target);
     K.T = T0; showTime(K.T);
-    setPrompt(() => tr('clkSet', digital(K.target), inWords(K.target)));
+    intro('clkSet', () => tr('clkSet', digital(K.target), inWords(K.target)), () => tr('clkSetShort', digital(K.target), inWords(K.target)));
   } else {
     setTray(distractors(K.target).map(cardItem), { sp: { wide: 2.8, tall: 2.6 } });
     // spin the hands round to the time to read
@@ -185,7 +188,7 @@ async function startRound() {
     await tween(1.1, k => showTime(Math.round(lerp(from, from + 720 + ((K.target - from) % 720 + 720) % 720, k)), false), ease.inOutSine);
     for (let i = 0; i < 3; i++) sfx.tap();
     showTime(K.target);
-    setPrompt(() => tr('clkRead'));
+    intro('clkRead', () => tr('clkRead'));
   }
   if (tok !== K.round) return;
   K.busy = false; S.lastAct = S.time;
@@ -236,7 +239,7 @@ async function win(card) {
   const nStars = K.problemWrong === 0 ? 3 : K.problemWrong <= 2 ? 2 : 1;
   owlCheer(); drawCard(true);
   const ti = Math.floor(Math.random() * 4);
-  setPrompt(() => tr('clkWin', digital(K.target), inWords(K.target), tr('winTail')[ti]));
+  quiet(() => tr('clkWin', digital(K.target), inWords(K.target), tr('winTail')[ti]));
   K.clock.hh.j.pop(0.6); K.clock.mh.j.pop(0.6); K.clock.face.punch(0.4);
   await celebrate({ center: K.clock.group.localToWorld(V3(0, 0.4, 0)), nStars, gameId: 'clock', level: K.level, wrong: K.problemWrong });
   if (card) card.kill();

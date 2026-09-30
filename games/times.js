@@ -5,7 +5,7 @@ import { INK, SRC, cutTex, cutShared, sharedMesh, paperMat, paint, text, segs, r
 import { scene, S, burst, drag } from '../engine/core.js';
 import { sfx, speak } from '../engine/audio.js';
 import { tr } from '../engine/i18n.js';
-import { say, owlTilt, owlCheer } from '../engine/pip.js';
+import { say, note, firstTime, owlTilt, owlCheer } from '../engine/pip.js';
 import { setPencil } from '../engine/pencil.js';
 import { setTray, digitItems, setTrayGlow, flyHome } from '../engine/tray.js';
 import { celebrate, wiggleHelp } from '../engine/ui.js';
@@ -102,6 +102,9 @@ function makeSlots() {
 
 /* ---------- rounds ---------- */
 function setPrompt(fn) { T.promptFn = fn; say(fn()); }
+// explain once per visit, then say only the short version (or show the text silently when there is no short one)
+function intro(key, full, short = null) { const first = firstTime(key), fn = first || !short ? full : short; T.promptFn = fn; if (first || short) say(fn()); else note(fn()); }
+function quiet(fn) { T.promptFn = fn; note(fn()); }
 const stripItem = (n, ci) => ({ key: 's' + n, make: () => { const j = new Juicy(sharedMesh(stripMat(n, ci))); j.len = n; return j; }, trayBase: Math.min(1.3, 3.2 / (n * CELL)), base: 1 });
 function plantTray() {
   const ci = T.placed % PETALS.length, items = [stripItem(T.b, ci)];
@@ -122,7 +125,7 @@ async function startRound() {
   await tween(0.7, k => plot.group.position.set(S.L.main[0] + 0.3, S.L.main[1] + (1 - k) * 15, 0), ease.outBack);
   if (tok !== T.round) return;
   sfx.snap(); S.shake = Math.max(S.shake, 0.2);
-  setPrompt(() => tr('tmPlant', T.a, T.b));
+  intro('tmPlant', () => tr('tmPlant', T.a, T.b), () => tr('tmShort', T.a, T.b));
   T.busy = false; S.lastAct = S.time;
 }
 async function dropStrip(p, target) {
@@ -138,12 +141,12 @@ async function dropStrip(p, target) {
   T.rows.push({ strip: p, tag });
   for (let i = 0; i < T.b; i++) wait(0.04 * i).then(() => sfx.dot(i));
   burst(to, 10, { colors: [PETALS[r % PETALS.length], '#8fbf5a', '#fffaf0'], speed: 2.5, up: 3, z: 1, size: 0.6 });
-  say(`${T.placed * T.b}!`, { hop: true });
+  note(`${T.placed * T.b}`); // the running total is shown, not said (saying the last one would give the answer away)
   drawCard();
   if (T.placed === T.a) {
     T.phase = 'answer'; setTray(digitItems()); makeSlots();
     await wait(0.8);
-    setPrompt(() => tr('tmAnswer', T.a, T.b));
+    intro('tmAnswer', () => tr('tmAnswer', T.a, T.b));
   } else plantTray();
 }
 let skipTok = 0;
@@ -178,7 +181,7 @@ async function win() {
   const nStars = T.problemWrong === 0 ? 3 : T.problemWrong <= 2 ? 2 : 1;
   owlCheer(); drawCard(true);
   const ti = Math.floor(Math.random() * 4);
-  setPrompt(() => tr('tmWin', T.a, T.b, product(), tr('winTail')[ti]));
+  quiet(() => tr('tmWin', T.a, T.b, product(), tr('winTail')[ti]));
   T.rows.forEach((r, i) => wait(0.07 * i).then(() => { r.strip.pop(0.5); r.strip.punch(0.3); }));
   await celebrate({ center: T.plot.group.localToWorld(V3(0, 0.3, 0)), nStars, gameId: 'times', level: T.level, wrong: T.problemWrong });
   if (tok !== T.round) return;

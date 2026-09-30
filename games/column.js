@@ -5,7 +5,7 @@ import { INK, DIGIT_COLORS, SRC, BAND_COLORS, BAND_INK, cutTex, cutShared, share
 import { scene, camera, S, burst, drag, startDrag } from '../engine/core.js';
 import { sfx } from '../engine/audio.js';
 import { tr, lang, colName } from '../engine/i18n.js';
-import { say, owlTilt, owlCheer } from '../engine/pip.js';
+import { say, note, firstTime, owlTilt, owlCheer } from '../engine/pip.js';
 import { setPencil } from '../engine/pencil.js';
 import { setTray, digitItems, setTrayGlow, flyHome } from '../engine/tray.js';
 import { celebrate, wiggleHelp } from '../engine/ui.js';
@@ -226,6 +226,9 @@ function genSub(level) {
    talking helpers
    ===================================================================== */
 function setPrompt(fn) { C.promptFn = fn; say(fn()); }
+// explain once per visit, then say only the short version (or show the text silently when there is no short one)
+function intro(key, full, short = null) { const first = firstTime(key), fn = first || !short ? full : short; C.promptFn = fn; if (first || short) say(fn()); else note(fn()); }
+function quiet(fn) { C.promptFn = fn; note(fn()); }
 const onlyCarry = i => i >= C.P.lenA && i >= C.P.lenB;
 const needCarry = a => C.op === '+' && a + 1 < C.P.C && C.P.carries[a + 1] === 1;
 const borrowPending = a => C.op === '-' && C.P.borrow[a] && !C.borrowed[a];
@@ -248,6 +251,12 @@ function columnPrompt(i) {
   const b = P.dB[i] || 0, head = i === 0 ? tr('subStart', P.a, P.b) : tr('subCol', i);
   if (borrowPending(i)) return head + ' ' + tr('needBorrow', subTop0(i), b, P.dA[i + 1], i + 1);
   return head + ' ' + tr('subAsk', P.topAfter[i], b);
+}
+function columnShort(i) {
+  const P = C.P;
+  if (C.op === '+') return onlyCarry(i) ? tr('onlyCarry', i) : tr('colShort', i, eqHTML(i));
+  if (borrowPending(i)) return tr('borrowShort', P.dA[i + 1]);
+  return tr('subShort', i, P.topAfter[i], P.dB[i] || 0);
 }
 function updateTag() {
   const b = C.board; if (!b || !b.tag) return;
@@ -275,8 +284,7 @@ function showCount(a) {
 function startColumn(i, prefix = null) {
   C.active = i; C.wrong = 0; C.help = 0; setTrayGlow(null); clearDots(); setPanelLabel(null); S.nudged = false; wiggleHelp(false);
   const b = C.board; b.bands[i].pop(0.35); b.bands[i].punch(0.2);
-  const pi = prefix ? Math.floor(Math.random() * tr('praise').length) : -1;
-  setPrompt(() => (pi >= 0 ? tr('praise')[pi] + ' ' : '') + columnPrompt(i));
+  intro(C.op + 'col', () => columnPrompt(i), () => columnShort(i));
   updateTag();
 }
 async function startSolve(P) {
@@ -357,8 +365,8 @@ function onPlaced() {
   if (C.op === '-') return completeColumn();
   const ansDone = !!b.answer[a].tile, carryDone = !needCarry(a) || !!b.carry[a + 1].tile;
   if (ansDone && carryDone) return completeColumn();
-  if (ansDone) setPrompt(() => tr('carryNow', P.colSum[a] % 10, a + 1));
-  else setPrompt(() => tr('carryFirst', a, eqHTML(a)));
+  if (ansDone) intro('carry', () => tr('carryNow', P.colSum[a] % 10, a + 1), () => tr('carryShort'));
+  else quiet(() => tr('carryFirst', a, eqHTML(a)));
   C.wrong = 0; updateTag();
 }
 function completeColumn() {
@@ -377,7 +385,7 @@ async function win() {
   owlCheer();
   b.answer.slice().reverse().forEach((s, k) => wait(k * 0.11).then(() => { if (s.tile) { s.tile.pop(0.6); s.tile.punch(0.4); } }));
   const ti = Math.floor(Math.random() * 4);
-  setPrompt(() => C.op === '+' ? tr('addWin', P.a, P.b, P.sum, tr('winTail')[ti]) : tr('subWin', P.a, P.b, P.r, tr('winTail')[ti]));
+  quiet(() => C.op === '+' ? tr('addWin', P.a, P.b, P.sum, tr('winTail')[ti]) : tr('subWin', P.a, P.b, P.r, tr('winTail')[ti]));
   await celebrate({ center: b.group.localToWorld(V3(0, 0.9, 0)), nStars, gameId: C.gameId, level: C.level, wrong: C.problemWrong });
   if (tok !== C.round) return;
   await wait(0.5);
@@ -406,7 +414,7 @@ async function doBorrow(i) {
   b.top[i].punch(0.5); b.top[i].pop(0.3); sfx.ten(); S.shake = Math.max(S.shake, 0.12);
   burst(b.group.localToWorld(V3(colX(n, i), ROW.top + 0.4, 0.6)), 14, { colors: ['#2f9e97', '#f2c14e', '#fffaf0'], speed: 3, up: 4, size: 0.8 });
   C.busy = false; C.wrong = 0;
-  setPrompt(() => tr('borrowed', x, t0, bb));
+  intro('borrowed', () => tr('borrowed', x, t0, bb), () => tr('subShort', i, t0 + 10, bb));
   updateTag();
 }
 
@@ -417,7 +425,7 @@ async function enterBuild() {
   await swapBoard(buildBoard(null, 'build'));
   if (tok !== C.round) return;
   C.busy = false;
-  setPrompt(() => tr('buildStart'));
+  intro('build', () => tr('buildStart'));
 }
 const readRow = slots => { let v = 0; for (let i = slots.length - 1; i >= 0; i--) v = v * 10 + (slots[i].tile ? slots[i].tile.d : 0); return v; };
 const buildReady = () => { const b = C.board; return b && b.mode === 'build' && b.top[0].tile && b.bottom[0].tile; };

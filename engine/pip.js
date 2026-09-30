@@ -62,12 +62,22 @@ export function buildPip() {
 export function owlHop(a = 1) { pip.hop.vel += 7 * a; pip.body.punch(-0.3 * a); }
 export function owlCheer() { pip.flap = 1.5; owlHop(1.3); setTimeout(() => owlHop(1), 420); }
 export function owlTilt() { pip.body.rot.vel += 4.5; }
+// Pip's talking rules (keep him informative but quiet):
+//  - how an activity works is explained once per visit (firstTime), later only the essentials are said;
+//  - correct answers get a sound, not speech (use note() to show a fact silently);
+//  - mistakes and hints are spoken, briefly.
+const seen = new Set();
+export function resetIntros() { seen.clear(); }
+export function firstTime(key) { if (seen.has(key)) return false; seen.add(key); return true; }
+// show text in the bubble without speaking (tapping Pip reads it aloud)
+export function note(html) { say(html, { voice: false, hop: false }); }
 // speech: optional different text to read aloud (e.g. say a word without showing its spelling)
 export function say(html, { voice = true, hop = true, speech = null } = {}) {
   pip.lastSay = html; pip.lastSpeech = speech; bubbleText.innerHTML = html; bubble.classList.add('show');
   bubbleText.classList.remove('pop'); void bubbleText.offsetWidth; bubbleText.classList.add('pop');
   if (hop) owlHop(0.7);
   if (voice) speak(speech || html);
+  if (window.__sayLog) window.__sayLog.push((voice ? 'SAY  ' : 'note ') + (speech || html).replace(/<[^>]+>/g, '')); // test hook
 }
 function updatePip(dt, t) {
   const L = S.L; pip.hop.step(dt);

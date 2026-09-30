@@ -5,7 +5,7 @@ import { INK, DIGIT_COLORS, cutShared, sharedMesh, paint, text, rr, starPath, di
 import { scene, S, burst, drag } from '../engine/core.js';
 import { sfx } from '../engine/audio.js';
 import { tr } from '../engine/i18n.js';
-import { say, owlTilt, owlCheer } from '../engine/pip.js';
+import { say, note, firstTime, owlTilt, owlCheer } from '../engine/pip.js';
 import { setPencil } from '../engine/pencil.js';
 import { setTray, setTrayGlow, flyHome } from '../engine/tray.js';
 import { celebrate, wiggleHelp } from '../engine/ui.js';
@@ -131,6 +131,9 @@ function trayKeys() {
 
 /* ---------- rounds ---------- */
 function setPrompt(fn) { Pt.promptFn = fn; say(fn()); }
+// explain once per visit, then say only the short version (or show the text silently when there is no short one)
+function intro(key, full, short = null) { const first = firstTime(key), fn = first || !short ? full : short; Pt.promptFn = fn; if (first || short) say(fn()); else note(fn()); }
+function quiet(fn) { Pt.promptFn = fn; note(fn()); }
 const chug = () => { sfx.tap(); };
 async function startRound() {
   const tok = ++Pt.round;
@@ -145,7 +148,7 @@ async function startRound() {
   if (tok !== Pt.round) return;
   sfx.snap(); t.cars.forEach((c, i) => wait(i * 0.05).then(() => c.w.punch(0.3)));
   setTray(trayKeys().map(itemItem), { sp: { wide: 2.4, tall: 2.3 } });
-  setPrompt(() => Pt.level === 3 ? `${tr('ptStart')}` : tr('ptStart'));
+  intro('ptStart', () => tr('ptStart'));
   Pt.busy = false; S.lastAct = S.time;
 }
 let rhythmTok = 0;
@@ -183,7 +186,7 @@ async function win() {
   const nStars = Pt.problemWrong === 0 ? 3 : Pt.problemWrong <= 2 ? 2 : 1;
   owlCheer(); Pt.train.loco.pop(0.6);
   const ti = Math.floor(Math.random() * 4);
-  setPrompt(() => tr('ptWin', tr('winTail')[ti]));
+  quiet(() => tr('ptWin', tr('winTail')[ti]));
   [0, 0.25].forEach(d => { wait(d).then(() => sfx.hoot()); });
   await rhythm();
   await celebrate({ center: Pt.train.group.localToWorld(V3(0, 0.3, 0)), nStars, gameId: 'pattern', level: Pt.level, wrong: Pt.problemWrong });

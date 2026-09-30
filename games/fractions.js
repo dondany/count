@@ -5,7 +5,7 @@ import { INK, SRC, cutTex, cutShared, sharedMesh, paperMat, paint, text, segs, r
 import { scene, S, burst, drag } from '../engine/core.js';
 import { sfx } from '../engine/audio.js';
 import { tr, fracWords } from '../engine/i18n.js';
-import { say, owlTilt, owlCheer } from '../engine/pip.js';
+import { say, note, firstTime, owlTilt, owlCheer } from '../engine/pip.js';
 import { setPencil } from '../engine/pencil.js';
 import { setTray, digitItems, setTrayGlow, flyHome } from '../engine/tray.js';
 import { celebrate, wiggleHelp } from '../engine/ui.js';
@@ -148,6 +148,9 @@ function makeSlots() {
 
 /* ---------- rounds ---------- */
 function setPrompt(fn) { F.promptFn = fn; say(fn()); }
+// explain once per visit, then say only the short version (or show the text silently when there is no short one)
+function intro(key, full, short = null) { const first = firstTime(key), fn = first || !short ? full : short; F.promptFn = fn; if (first || short) say(fn()); else note(fn()); }
+function quiet(fn) { F.promptFn = fn; note(fn()); }
 async function startRound() {
   const tok = ++F.round;
   F.busy = true; F.help = 0; F.problemWrong = 0; S.nudged = false; setTrayGlow(null); wiggleHelp(false);
@@ -165,7 +168,7 @@ async function startRound() {
   await tween(0.7, k => st.group.position.set(S.L.main[0], S.L.main[1] + (1 - k) * 15, 0), ease.outBack);
   if (tok !== F.round) return;
   sfx.snap(); S.shake = Math.max(S.shake, 0.2);
-  if (F.mode === 'make') setPrompt(() => tr('frMake', fracStr(), fracWords(F.n, F.d)));
+  if (F.mode === 'make') intro('frMake', () => tr('frMake', fracStr(), fracWords(F.n, F.d)), () => tr('frMakeShort', fracStr(), fracWords(F.n, F.d)));
   else {
     const off = F.shape === 'pizza' ? rint(0, F.d - 1) : 0;
     for (let i = 0; i < F.n; i++) {
@@ -177,7 +180,7 @@ async function startRound() {
     makeSlots();
     await wait(0.08 * F.n + 0.2);
     if (tok !== F.round) return;
-    setPrompt(() => tr('frRead'));
+    intro('frRead', () => tr('frRead'));
   }
   F.busy = false; S.lastAct = S.time;
 }
@@ -250,7 +253,7 @@ async function win() {
   const nStars = F.problemWrong === 0 ? 3 : F.problemWrong <= 2 ? 2 : 1;
   owlCheer(); drawCard(true);
   const ti = Math.floor(Math.random() * 4);
-  setPrompt(() => tr('frWin', fracStr(), fracWords(F.n, F.d), tr('winTail')[ti]));
+  quiet(() => tr('frWin', fracStr(), fracWords(F.n, F.d), tr('winTail')[ti]));
   F.placed.forEach((pc, i) => pc && wait(0.05 * i).then(() => { pc.pop(0.5); pc.punch(0.3); }));
   await celebrate({ center: F.stage.group.localToWorld(V3(0, 0.4, 0)), nStars, gameId: 'frac', level: F.level, wrong: F.problemWrong });
   if (tok !== F.round) return;

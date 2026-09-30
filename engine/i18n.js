@@ -110,6 +110,12 @@ export const cap1 = s => s.charAt(0).toUpperCase() + s.slice(1);
 /* ---------- dictionary ---------- */
 const STR = {
   en: {
+    // short prompts, used once the activity has been explained
+    colShort: (i, eq) => `${cap1(EN_COLS[i])}: ${eq} = <b>?</b>`, subShort: (i, t, b) => `${cap1(EN_COLS[i])}: ${t} − ${b} = <b>?</b>`,
+    borrowShort: x => `Borrow — tap the <b>${x}</b>!`, carryShort: `Carry the ${CA}!`,
+    blkBuildShort: n => `Build <b>${n}</b>!`, clkSetShort: (t, w) => `<b>${t}</b> — ${w}`, frMakeShort: (f, w) => `<b>${f}</b> — ${w}`,
+    tmShort: (a, b) => `<b>${a} × ${b}</b>`, flFindShort: n => `Flag: <b>${cap1(n)}</b>`, flContShort: n => `<b>${cap1(n)}</b> — which continent?`,
+    euFindShort: n => `Where is <b>${n}</b>?`, anWhereShort: n => `Where does the <b>${n}</b> live?`, wrShort: l => `<b>${l}</b>`,
     // app
     title: ['Paper', 'School'], appName: "Pip's Paper School",
     subtitle: 'Learn maths with <b>Pip</b> the owl 🦉',
@@ -297,6 +303,11 @@ const STR = {
     },
   },
   pl: {
+    colShort: (i, eq) => `${cap1(PL_COLS[i])}: ${eq} = <b>?</b>`, subShort: (i, t, b) => `${cap1(PL_COLS[i])}: ${t} − ${b} = <b>?</b>`,
+    borrowShort: x => `Pożycz — kliknij <b>${x}</b>!`, carryShort: `Przenieś ${CA}!`,
+    blkBuildShort: n => `Zbuduj <b>${n}</b>!`, clkSetShort: (t, w) => `<b>${t}</b> — ${w}`, frMakeShort: (f, w) => `<b>${f}</b> — ${w}`,
+    tmShort: (a, b) => `<b>${a} × ${b}</b>`, flFindShort: n => `Flaga: <b>${cap1(n)}</b>`, flContShort: n => `<b>${cap1(n)}</b> — który kontynent?`,
+    euFindShort: n => `Gdzie leży <b>${n}</b>?`, anWhereShort: n => `Gdzie mieszka <b>${n}</b>?`, wrShort: l => `<b>${l}</b>`,
     title: ['Papierowa', 'Szkoła'], appName: 'Papierowa Szkoła Pipa',
     subtitle: 'Ucz się matematyki z sową <b>Pipem</b> 🦉',
     loading: 'Ładowanie…', play: 'Gramy!', tiny: 'Przeciągaj papierowe elementy palcem lub myszką!',

@@ -5,7 +5,7 @@ import { INK, cutTex, cutShared, sharedMesh, paperMat, paint, text, tornRect, so
 import { scene, S, burst, drag } from '../engine/core.js';
 import { sfx } from '../engine/audio.js';
 import { tr, lang, cap1 } from '../engine/i18n.js';
-import { say, owlTilt, owlCheer } from '../engine/pip.js';
+import { say, note, firstTime, owlTilt, owlCheer } from '../engine/pip.js';
 import { setPencil } from '../engine/pencil.js';
 import { setTray, setTrayGlow, flyHome } from '../engine/tray.js';
 import { celebrate, wiggleHelp } from '../engine/ui.js';
@@ -54,6 +54,9 @@ function drawCard(state) {
 
 /* ---------- rounds ---------- */
 function setPrompt(fn) { An.promptFn = fn; say(fn()); }
+// explain once per visit, then say only the short version (or show the text silently when there is no short one)
+function intro(key, full, short = null) { const first = firstTime(key), fn = first || !short ? full : short; An.promptFn = fn; if (first || short) say(fn()); else note(fn()); }
+function quiet(fn) { An.promptFn = fn; note(fn()); }
 function pickAnimals(n) {
   const pool = ANIMALS.filter(a => (An.level === 1 ? a.easy : true) && !An.recent.includes(a.id));
   const out = shuffle(pool.slice()).slice(0, n);
@@ -73,7 +76,7 @@ async function startRound() {
     An.loose = pickAnimals(3); An.total = 3; An.cur = null;
     setTray(An.loose.map(animalItem), { sp: { wide: 2.6, tall: 2.3 } });
     drawCard({ animal: null, lines: [`0 / ${An.total}`] });
-    setPrompt(() => tr('anMany'));
+    intro('anMany', () => tr('anMany'));
     An.busy = false; S.lastAct = S.time;
   } else { An.queue = pickAnimals(5); An.total = An.queue.length; nextStep(tok); }
 }
@@ -83,7 +86,7 @@ function nextStep(tok) {
   const a = An.cur = An.queue.shift(); An.help = 0; An.stepWrong = 0; S.nudged = false; setTrayGlow(null); wiggleHelp(false);
   setTray([animalItem(a)], { sp: { wide: 2.6, tall: 2.3 } });
   drawCard({ animal: a.id, lines: [cap1(nm(a))] });
-  setPrompt(() => tr('anWhere', nm(a)));
+  intro('anWhere', () => tr('anWhere', nm(a)), () => tr('anWhereShort', nm(a)));
   An.busy = false; S.lastAct = S.time;
 }
 async function goHome(p, a) {
@@ -110,7 +113,7 @@ async function solved(a, p) {
   await goHome(p, a);
   sfx.good(An.placed + 1);
   drawCard({ animal: a.id, lines: [cap1(nm(a)), An.level === 3 ? `${An.placed} / ${An.total}` : ''] });
-  setPrompt(() => tr('anYes', nm(a), a.cont));
+  quiet(() => tr('anYes', nm(a), a.cont));
   if (An.level === 3) {
     An.loose = An.loose.filter(x => x.id !== a.id);
     if (!An.loose.length) { await wait(1.6); if (tok === An.round) win(); return; }
@@ -124,7 +127,7 @@ async function win() {
   const nStars = An.problemWrong === 0 ? 3 : An.problemWrong <= 3 ? 2 : 1;
   owlCheer();
   const ti = Math.floor(Math.random() * 4);
-  setPrompt(() => tr('anWin', An.placed, tr('winTail')[ti]));
+  quiet(() => tr('anWin', An.placed, tr('winTail')[ti]));
   An.map.group.children.forEach((o, i) => { if (o.userData.kind === 'homeAnimal') wait(0.08 * i).then(() => o.userData.j && o.userData.j.pop(0.6)); });
   await celebrate({ center: An.map.group.localToWorld(V3(0, 0.2, 0)), nStars, gameId: 'animals', level: An.level, wrong: An.problemWrong });
   if (tok !== An.round) return;

@@ -5,7 +5,7 @@ import { INK, RIM, DIGIT_COLORS, font, cutShared, sharedMesh, paint, text, rr, t
 import { scene, S, burst, drag } from '../engine/core.js';
 import { sfx, speak } from '../engine/audio.js';
 import { tr, lang } from '../engine/i18n.js';
-import { say, owlTilt, owlCheer } from '../engine/pip.js';
+import { say, note, firstTime, owlTilt, owlCheer } from '../engine/pip.js';
 import { setPencil } from '../engine/pencil.js';
 import { setTray, setTrayGlow, flyHome } from '../engine/tray.js';
 import { celebrate, wiggleHelp } from '../engine/ui.js';
@@ -107,7 +107,8 @@ async function startRound() {
   if (tok !== W.round) return;
   sfx.snap(); S.shake = Math.max(S.shake, 0.2); b.pic.pop(0.5);
   const w = () => W.word.charAt(0) + W.word.slice(1).toLowerCase();
-  setPrompt(() => W.level === 1 ? tr('wrdTrace') : tr('wrdSpell'), () => `${w()}! ${W.level === 1 ? tr('wrdTrace') : tr('wrdSpell')}`);
+  const first = firstTime('words');
+  setPrompt(() => W.level === 1 ? tr('wrdTrace') : tr('wrdSpell'), () => first ? `${w()}! ${W.level === 1 ? tr('wrdTrace') : tr('wrdSpell')}` : `${w()}!`);
   W.busy = false; S.lastAct = S.time;
 }
 function onDrop(p, slot) {
@@ -138,7 +139,7 @@ async function win() {
   owlCheer(); W.board.pic.pop(0.8); W.board.pic.punch(0.5);
   W.slots.forEach((s, i) => wait(0.07 * i).then(() => s.tile && (s.tile.pop(0.5), s.tile.punch(0.3))));
   const ti = Math.floor(Math.random() * 4);
-  setPrompt(() => tr('wrdWin', W.word, tr('winTail')[ti]));
+  W.promptFn = () => tr('wrdWin', W.word, tr('winTail')[ti]); note(W.promptFn());
   await celebrate({ center: W.board.group.localToWorld(V3(0, 0.3, 0)), nStars, gameId: 'words', level: W.level, wrong: W.problemWrong });
   if (tok !== W.round) return;
   await wait(0.3);

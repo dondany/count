@@ -5,7 +5,7 @@ import { INK, font, cutTex, cutShared, sharedMesh, paperMat, paint, text, tornRe
 import { scene, S, burst, drag } from '../engine/core.js';
 import { sfx } from '../engine/audio.js';
 import { tr } from '../engine/i18n.js';
-import { say, owlTilt, owlCheer } from '../engine/pip.js';
+import { say, note, firstTime, owlTilt, owlCheer } from '../engine/pip.js';
 import { setPencil } from '../engine/pencil.js';
 import { setTray, setTrayGlow, flyHome } from '../engine/tray.js';
 import { celebrate, wiggleHelp } from '../engine/ui.js';
@@ -147,6 +147,9 @@ function drawCard() {
 
 /* ---------- rounds ---------- */
 function setPrompt(fn) { Sp.promptFn = fn; say(fn()); }
+// explain once per visit, then say only the short version (or show the text silently when there is no short one)
+function intro(key, full, short = null) { const first = firstTime(key), fn = first || !short ? full : short; Sp.promptFn = fn; if (first || short) say(fn()); else note(fn()); }
+function quiet(fn) { Sp.promptFn = fn; note(fn()); }
 const planetItem = i => ({ key: 'p' + i, make: () => { const j = new Juicy(sharedMesh(planetMat(i))); j.pi = i; return j; }, trayBase: Math.min(1.5, 0.62 / R[i]), base: PS });
 async function startRound() {
   const tok = ++Sp.round;
@@ -160,11 +163,11 @@ async function startRound() {
   sfx.snap(); S.shake = Math.max(S.shake, 0.2);
   if (Sp.level === 2) {
     setTray([...Array(8).keys()].sort(() => Math.random() - 0.5).map(planetItem), { sp: { wide: 2.05, tall: 2.12 } });
-    setPrompt(() => tr('spPlace'));
+    intro('spPlace', () => tr('spPlace'));
   } else {
     R.forEach((r, i) => { const j = addPlanet(i, rand(0, TAU)); j.sc.v = 0.0001; wait(0.08 * i).then(() => { j.sc.t = 1; j.pop(0.4); sfx.tap(); }); });
-    if (Sp.level === 1) setPrompt(() => tr('spExplore'));
-    else { Sp.quiz = [...Array(8).keys()].sort(() => Math.random() - 0.5).slice(0, 5); setPrompt(() => tr('spQuizStart')); await wait(1.4); if (tok !== Sp.round) return; nextQuestion(tok); return; }
+    if (Sp.level === 1) intro('spExplore', () => tr('spExplore'));
+    else { Sp.quiz = [...Array(8).keys()].sort(() => Math.random() - 0.5).slice(0, 5); intro('spQuiz', () => tr('spQuizStart')); await wait(1.4); if (tok !== Sp.round) return; nextQuestion(tok); return; }
   }
   Sp.busy = false; S.lastAct = S.time;
 }
@@ -193,7 +196,7 @@ function onDrop(p, target) {
     if (p.pi === Sp.q) {
       Sp.busy = true; flyHome(p); const pl = Sp.planets.find(x => x.i === Sp.q).j; pl.pop(0.8); pl.punch(0.5); Sp.focus = Sp.q;
       burst(pl.mesh.getWorldPosition(V3()), 16, { speed: 3, up: 4 }); sfx.good(Sp.answered++ + 2);
-      setPrompt(() => tr('spFacts')[Sp.q]);
+      quiet(() => tr('spFacts')[Sp.q]);
       const tok = Sp.round; wait(2.2).then(() => nextQuestion(tok));
       return;
     }
@@ -217,7 +220,7 @@ function onDrop(p, target) {
     });
     sfx.good(o + 1); Sp.stepWrong = 0; setTrayGlow(null); wiggleHelp(false);
     setTray([...Array(8).keys()].filter(i => i !== o && !Sp.planets.some(x => x.i === i)).sort(() => Math.random() - 0.5).map(planetItem), { sp: { wide: 2.05, tall: 2.12 } });
-    setPrompt(() => tr('spFacts')[o]);
+    quiet(() => tr('spFacts')[o]);
     return;
   }
   flyHome(p); target.j.punch(0.3); Sp.problemWrong++; Sp.stepWrong++; recordMistake('space', 'order'); sfx.bad(); owlTilt();
@@ -229,7 +232,7 @@ async function win() {
   const nStars = Sp.problemWrong === 0 ? 3 : Sp.problemWrong <= 2 ? 2 : 1;
   owlCheer();
   const ti = Math.floor(Math.random() * 4);
-  setPrompt(() => tr('spWin', tr('winTail')[ti]));
+  quiet(() => tr('spWin', tr('winTail')[ti]));
   Sp.planets.forEach((p, i) => wait(0.1 * i).then(() => { p.j.pop(0.6); p.j.punch(0.4); }));
   await wait(0.9);
   await celebrate({ center: Sp.board.group.localToWorld(V3(0, 0, 0)), nStars, gameId: 'space', level: Sp.level, wrong: Sp.problemWrong });

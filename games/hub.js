@@ -7,7 +7,7 @@ import { sfx } from '../engine/audio.js';
 import { tr } from '../engine/i18n.js';
 import { store, save } from '../engine/store.js';
 import { daily } from '../engine/stats.js';
-import { say, owlTilt } from '../engine/pip.js';
+import { say, note, owlTilt } from '../engine/pip.js';
 import { setTray } from '../engine/tray.js';
 import { setPencil } from '../engine/pencil.js';
 import { ANIMALS } from './pictures.js';
@@ -161,7 +161,7 @@ export const hub = {
   }),
   get level() { return store.hubCat || 'math'; }, set level(v) {},
   onPick: null,
-  enter() { setTray(null); setPencil(null); build(); say(hello()); },
+  enter() { setTray(null); setPencil(null); build(); if (hub.greeted) note(hello()); else { hub.greeted = true; say(hello()); } }, // greet once per session
   setLevel(cat) { store.hubCat = cat; save(); build(); },
   exit() { destroy(); },
   relayout() { if (!H) return; const pos = positions(H.cards.length); H.cards.forEach((k, i) => { k.g.position.x = pos[i][0]; k.y = pos[i][1]; k.g.scale.setScalar(pos[i][2]); }); },

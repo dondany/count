@@ -5,7 +5,7 @@ import { INK, cutTex, cutShared, sharedMesh, paperMat, paint, text, segs, rr, to
 import { scene, S, burst, drag, startGrab, cancelGrab, setNDC, atZ, renderer } from '../engine/core.js';
 import { sfx } from '../engine/audio.js';
 import { tr, lang, contName, cap1 } from '../engine/i18n.js';
-import { say, owlTilt, owlCheer } from '../engine/pip.js';
+import { say, note, firstTime, owlTilt, owlCheer } from '../engine/pip.js';
 import { setPencil } from '../engine/pencil.js';
 import { setTray, setTrayGlow, flyHome } from '../engine/tray.js';
 import { celebrate, wiggleHelp } from '../engine/ui.js';
@@ -93,6 +93,9 @@ const factLines = c => [`${contName(c.cont)}`, `${tr('flCapital')}: ${capOf(c)}`
 
 /* ---------- rounds ---------- */
 function setPrompt(fn) { Fl.promptFn = fn; say(fn()); }
+// explain once per visit, then say only the short version (or show the text silently when there is no short one)
+function intro(key, full, short = null) { const first = firstTime(key), fn = first || !short ? full : short; Fl.promptFn = fn; if (first || short) say(fn()); else note(fn()); }
+function quiet(fn) { Fl.promptFn = fn; note(fn()); }
 const flagItem = c => ({ key: 'f' + c.id, make: () => { const j = new Juicy(sharedMesh(flagMat(c.id))); j.cid = c.id; return j; }, trayBase: 1, base: 1 });
 // countries for a round, spread out on the map so pins (and planted flags) never sit on top of each other
 function pickCountries(n) {
@@ -126,7 +129,7 @@ async function startRound() {
     await wait(0.6);
     setTray(shuffle(list.slice()).map(flagItem), { sp: { wide: 2.5, tall: 2.3 } });
     drawCard({ title: tr('flMystery'), flag: null, lines: [`0 / ${Fl.total}`] });
-    setPrompt(() => tr('flWhere'));
+    intro('fl3', () => tr('flWhere'));
     Fl.busy = false; S.lastAct = S.time;
   } else {
     Fl.queue = pickCountries(5); Fl.total = Fl.queue.length;
@@ -142,11 +145,11 @@ async function nextStep(tok) {
     const others = shuffle(COUNTRIES.filter(x => x.id !== c.id)).slice(0, 2);
     setTray(shuffle([c, ...others]).map(flagItem), { sp: { wide: 2.5, tall: 2.3 } });
     drawCard({ title: cap1(nm(c)), flag: null, lines: [] });
-    setPrompt(() => tr('flFind', nm(c)));
+    intro('fl1', () => tr('flFind', nm(c)), () => tr('flFindShort', nm(c)));
   } else {
     setTray([flagItem(c)], { sp: { wide: 2.5, tall: 2.3 } });
     drawCard({ title: cap1(nm(c)), flag: c.id, lines: [] });
-    setPrompt(() => tr('flWhichCont', nm(c)));
+    intro('fl2', () => tr('flWhichCont', nm(c)), () => tr('flContShort', nm(c)));
   }
   Fl.busy = false; S.lastAct = S.time;
 }
@@ -161,7 +164,7 @@ async function solved(c, p, pin) {
   sfx.good(Fl.placed + 1);
   if (Fl.level === 3) drawCard({ title: tr('flMystery'), flag: c.id, lines: [cap1(nm(c)), `${Fl.placed} / ${Fl.total}`] });
   else drawCard({ title: cap1(nm(c)), flag: c.id, lines: factLines(c) });
-  setPrompt(() => tr('flFact', nm(c), c.cont, capOf(c)));
+  quiet(() => tr('flFact', nm(c), c.cont, capOf(c)));
   if (Fl.level === 3) {
     if (Fl.placed >= Fl.total) { await wait(1.6); if (tok === Fl.round) win(); return; }
     // only the flags still to place stay in the tray
@@ -221,7 +224,7 @@ function nextEuStep(tok) {
   const c = Fl.cur = Fl.queue.shift(); Fl.help = 0; Fl.stepWrong = 0; S.nudged = false; wiggleHelp(false); showGlow(Fl.eu, null);
   setTray([flagItem(c)], { sp: { wide: 2.5, tall: 2.3 } });
   drawCard({ title: cap1(nm(c)), flag: c.id, lines: [tr('euProgress', painted().length, EU_IDS.length)] });
-  setPrompt(() => tr('euFind', nm(c)));
+  intro('eu', () => tr('euFind', nm(c)), () => tr('euFindShort', nm(c)));
   Fl.busy = false; S.lastAct = S.time;
 }
 function euLocal(pt) { return Fl.eu.group.worldToLocal(pt.clone()); }
@@ -252,7 +255,7 @@ async function euSolved(p) {
   burst(to, 16, { speed: 2.8, up: 4, z: 1, size: 0.7 });
   store.europe = [...new Set([...(store.europe || []), c.id])]; save();
   drawCard({ title: cap1(nm(c)), flag: c.id, lines: [`${tr('flCapital')}: ${capOf(c)}`, tr('euProgress', painted().length, EU_IDS.length)] });
-  setPrompt(() => tr('euYes', nm(c), capOf(c)));
+  quiet(() => tr('euYes', nm(c), capOf(c)));
   await wait(2.3);
   nextEuStep(tok);
 }
@@ -262,7 +265,7 @@ async function win() {
   const nStars = Fl.problemWrong === 0 ? 3 : Fl.problemWrong <= 3 ? 2 : 1;
   owlCheer();
   const ti = Math.floor(Math.random() * 4);
-  setPrompt(() => tr('flWin', Fl.placed, tr('winTail')[ti]));
+  quiet(() => tr('flWin', Fl.placed, tr('winTail')[ti]));
   Fl.pins.forEach((pin, i) => wait(0.08 * i).then(() => { if (pin.planted) { pin.planted.pop(0.6); pin.planted.punch(0.4); } }));
   await celebrate({ center: (Fl.eu ? Fl.eu.root : Fl.map.group).localToWorld(V3(0, 0.2, 0)), nStars, gameId: 'flags', level: Fl.level, wrong: Fl.problemWrong });
   if (tok !== Fl.round) return;

@@ -5,7 +5,7 @@ import { INK, font, cutTex, cutShared, sharedMesh, paperMat, paint, text, rr, to
 import { scene, S, burst, atZ, startGrab } from '../engine/core.js';
 import { sfx, speak } from '../engine/audio.js';
 import { tr, lang, cap1 } from '../engine/i18n.js';
-import { say, owlTilt, owlCheer } from '../engine/pip.js';
+import { say, note, firstTime, owlTilt, owlCheer } from '../engine/pip.js';
 import { setPencil } from '../engine/pencil.js';
 import { setTray } from '../engine/tray.js';
 import { celebrate, wiggleHelp } from '../engine/ui.js';
@@ -176,6 +176,9 @@ function drawCard() {
 
 /* ---------- flow ---------- */
 function setPrompt(fn) { Wr.promptFn = fn; say(fn()); }
+// explain once per visit, then say only the short version (or show the text silently when there is no short one)
+function intro(key, full, short = null) { const first = firstTime(key), fn = first || !short ? full : short; Wr.promptFn = fn; if (first || short) say(fn()); else note(fn()); }
+function quiet(fn) { Wr.promptFn = fn; note(fn()); }
 async function demo() {
   const b = Wr.board; if (!b) return;
   const my = Wr.round, t = b.tracer;
@@ -202,7 +205,7 @@ async function showMe() {
   say(tr('wrWatch'));
   await demo();
   if (tok !== Wr.round) return;
-  Wr.busy = false; S.lastAct = S.time; setPrompt(() => tr('wrStart', Wr.ch));
+  Wr.busy = false; S.lastAct = S.time; quiet(() => tr('wrStart', Wr.ch));
 }
 async function startLetter() {
   const tok = ++Wr.round;
@@ -215,7 +218,7 @@ async function startLetter() {
   } else { Wr.board.bg.punch(0.2); sfx.paper(); }
   if (tok !== Wr.round) return;
   drawOverlay(); drawCard();
-  setPrompt(() => tr('wrStart', Wr.ch));
+  intro('wrStart', () => tr('wrStart', Wr.ch), () => tr('wrShort', Wr.ch));
   Wr.busy = false; S.lastAct = S.time;
 }
 function completeStroke() {
@@ -225,14 +228,14 @@ function completeStroke() {
   sfx.good(Wr.cur + 2);
   if (Wr.cur + 1 < Wr.strokes.length) {
     Wr.cur++; Wr.prog = 0; Wr.warned = Wr.startWarned = false; drawOverlay();
-    say(tr('wrNext', Wr.cur + 1), { hop: false });
+    note(tr('wrNext', Wr.cur + 1));
   } else letterDone();
 }
 async function letterDone() {
   const tok = Wr.round; Wr.busy = true; Wr.busyDone = true; drawOverlay();
   Wr.board.bg.pop(0.4); owlCheer();
   const pic = pictureFor(Wr.ch);
-  setPrompt(() => tr('wrDone', Wr.ch, pic && pic.word));
+  quiet(() => tr('wrDone', Wr.ch, pic && pic.word));
   const nStars = Wr.mistakes === 0 ? 3 : Wr.mistakes <= 2 ? 2 : 1;
   await celebrate({ center: Wr.board.group.localToWorld(V3(0, 0.3, 0)), nStars, gameId: 'write', level: Wr.level, wrong: Wr.mistakes });
   if (tok !== Wr.round) return;

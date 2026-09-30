@@ -2,7 +2,7 @@
 import { S, resize, startLoop, manualStep, setPointerHandler, addUpdate, onLayout, startDrag, drag } from './engine/core.js';
 import { initDigits } from './engine/paper.js';
 import { buildWorld } from './engine/world.js';
-import { buildPip, say, pip, owlHop, owlCheer } from './engine/pip.js';
+import { buildPip, say, note, pip, owlHop, owlCheer, resetIntros } from './engine/pip.js';
 import { buildPencil } from './engine/pencil.js';
 import { spawnFromTray, tray } from './engine/tray.js';
 import { refreshStars, setLevels, showHUD, wiggleHelp, wipe, setRoundHook } from './engine/ui.js';
@@ -38,7 +38,7 @@ async function go(id, { instant = false } = {}) {
   switching = true; stopSpeech();
   const swap = async () => {
     if (current) current.exit();
-    current = next;
+    current = next; resetIntros();
     showHUD({ home: next !== hub, help: next !== hub });
     if (next !== hub && store.levels && store.levels[next.id] != null && next.levels().some(l => l.id === store.levels[next.id])) next.level = store.levels[next.id];
     setLevels(next.levels(), next.level, l => pickLevel(next, l));
@@ -51,7 +51,7 @@ async function go(id, { instant = false } = {}) {
 }
 hub.onPick = id => go(id);
 // a level chosen in the HUD is remembered per activity
-function pickLevel(g, l) { g.setLevel(l); if (g !== hub) { store.levels[g.id] = l; save(); } }
+function pickLevel(g, l) { resetIntros(); g.setLevel(l); if (g !== hub) { store.levels[g.id] = l; save(); } }
 
 /* ---------- after every finished round: stats, daily challenge, adaptive difficulty ---------- */
 setRoundHook(async ({ gameId, level, nStars, wrong }) => {
@@ -59,13 +59,13 @@ setRoundHook(async ({ gameId, level, nStars, wrong }) => {
   const d = dailyProgress(gameId);
   if (d) {
     if (d.claimed) { say(tr('dailyDone')); sfx.win(); owlCheer(); await wait(2.8); }
-    else { say(tr('dailyStep', d.done, d.goal)); owlHop(1); await wait(1.6); }
+    else { note(tr('dailyStep', d.done, d.goal)); owlHop(1); await wait(1.2); }
   }
   const g = GAMES[gameId];
   if (!g || g !== current || typeof level !== 'number') return;
   const ids = g.levels().map(l => l.id), nl = suggestLevel(gameId, level, ids);
   if (nl === level) return;
-  g.adopt(nl); store.levels[gameId] = nl; save();
+  g.adopt(nl); store.levels[gameId] = nl; save(); resetIntros();
   setLevels(g.levels(), nl, l => pickLevel(g, l));
   const label = g.levels().find(l => l.id === nl).label;
   say(nl > level ? tr('levelUp', label) : tr('levelDown', label)); owlHop(1.2);
@@ -91,9 +91,9 @@ addUpdate((dt, t) => {
   if (!current) return;
   current.update(dt, t);
   // a gentle nudge when a child has been stuck for a while
-  if (!switching && current.idle() && S.time - S.lastAct > 16 && !S.nudged) {
+  if (!switching && current.idle() && S.time - S.lastAct > 30 && !S.nudged) {
     S.nudged = true; S.lastAct = S.time; owlHop(1); sfx.hoot();
-    say(`${tr('nudge')} ${current.prompt()}`); wiggleHelp(true);
+    say(tr('nudge')); wiggleHelp(true);
   }
 });
 onLayout(() => { if (current) current.relayout(); });

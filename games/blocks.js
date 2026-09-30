@@ -5,7 +5,7 @@ import { INK, BAND_COLORS, BAND_INK, cutTex, cutShared, sharedMesh, paperMat, pa
 import { scene, S, burst, drag } from '../engine/core.js';
 import { sfx } from '../engine/audio.js';
 import { tr, lang, colName, words, splitWords, unit } from '../engine/i18n.js';
-import { say, owlTilt, owlCheer } from '../engine/pip.js';
+import { say, note, firstTime, owlTilt, owlCheer } from '../engine/pip.js';
 import { setPencil } from '../engine/pencil.js';
 import { setTray, digitItems, setTrayGlow, flyHome } from '../engine/tray.js';
 import { celebrate, wiggleHelp } from '../engine/ui.js';
@@ -154,6 +154,9 @@ function pickN() {
   return 42;
 }
 function setPrompt(fn) { B.promptFn = fn; say(fn()); }
+// explain once per visit, then say only the short version (or show the text silently when there is no short one)
+function intro(key, full, short = null) { const first = firstTime(key), fn = first || !short ? full : short; B.promptFn = fn; if (first || short) say(fn()); else note(fn()); }
+function quiet(fn) { B.promptFn = fn; note(fn()); }
 async function startRound() {
   const tok = ++B.round;
   B.busy = true; B.wrong = 0; B.help = 0; B.problemWrong = 0; setTrayGlow(null); wiggleHelp(false); S.nudged = false;
@@ -174,7 +177,7 @@ async function startRound() {
   sfx.snap(); S.shake = Math.max(S.shake, 0.2);
   if (B.mode === 'build') {
     for (let p = 0; p < B.cols; p++) setCounter(p);
-    setPrompt(() => tr('blkBuild', B.N, words(B.N), B.cols === 3));
+    intro('blkBuild', () => tr('blkBuild', B.N, words(B.N), B.cols === 3), () => tr('blkBuildShort', B.N));
   } else {
     const d = target(); let k = 0;
     for (let p = B.cols - 1; p >= 0; p--) for (let i = 0; i < d[p]; i++) {
@@ -185,7 +188,7 @@ async function startRound() {
     makeSlots();
     await wait(0.05 * k + 0.2);
     if (tok !== B.round) return;
-    setPrompt(() => tr('blkRead', B.cols === 3));
+    intro('blkRead', () => tr('blkRead', B.cols === 3));
   }
   B.busy = false; S.lastAct = S.time;
 }
@@ -209,7 +212,7 @@ function relayoutColumn(p) {
 }
 async function trade(p) {
   const list = B.pieces[p].splice(0, 10); B.counts[p] -= 10;
-  say(tr('blkTrade', p));
+  if (firstTime('trade' + p)) say(tr('blkTrade', p)); else note(tr('blkTrade', p));
   const cx = colCenter(p), froms = list.map(pc => pc.mesh.position.clone());
   const tos = list.map((pc, i) => p === 0 ? V3(cx, 0.5 + (4.5 - i) * 0.3, 0.2) : V3(cx + (i - 4.5) * 0.3, 0.9, 0.2 + i * 0.002));
   await tween(0.5, t => list.forEach((pc, i) => pc.mesh.position.lerpVectors(froms[i], tos[i], t)), ease.inOutSine);
@@ -294,7 +297,7 @@ async function win() {
   const nStars = B.problemWrong === 0 ? 3 : B.problemWrong <= 2 ? 2 : 1;
   owlCheer(); drawCard(true);
   const ti = Math.floor(Math.random() * 4);
-  setPrompt(() => tr('blkWin', B.N, words(B.N), tr('winTail')[ti]));
+  quiet(() => tr('blkWin', B.N, words(B.N), tr('winTail')[ti]));
   for (let p = 0; p < B.cols; p++) B.pieces[p].forEach((pc, i) => wait(0.02 * i + p * 0.1).then(() => { pc.pop(0.5); pc.punch(0.3); }));
   await celebrate({ center: B.mat.group.localToWorld(V3(0, 0.6, 0)), nStars, gameId: 'blocks', level: B.level, wrong: B.problemWrong });
   if (tok !== B.round) return;
