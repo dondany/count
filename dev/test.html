@@ -64,7 +64,7 @@ document.title = 'harness-start'; let ticks = 0; setInterval(() => { ticks++; if
       }
       else if (plan === 'write') {
         const w = A().writeState;
-        if (s === 'ok') w.simulate(); if (s === 'rev') w.simulate(true); if (s === 'half') w.simulate(false, 0.5); if (s === 'demo') w.round;
+        if (s === 'ok') w.simulate(); if (s === 'rev') w.simulate(true); if (s === 'half') w.simulate(false, 0.5); if (s === 'show') A().current().pointer({ userData: { kind: 'wshow', j: { punch() {}, pop() {} } } }, {});
       }
       else if (plan === 'scene') { const keys = A().trayKeys(); drop(keys[+s % keys.length], A().current().dragOpts().targets()[0]); }
       else if (plan === 'parents') {

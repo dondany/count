@@ -73,8 +73,8 @@ function buildBoard() {
   const om = new THREE.Mesh(new THREE.PlaneGeometry(ov.W, ov.H), new THREE.MeshBasicMaterial({ map: ov.tex, transparent: true, depthWrite: false }));
   om.position.z = 0.06; om.userData.kind = 'writeBoard'; g.add(om);
   const marker = new THREE.Object3D(); g.add(marker);
-  const tracer = new Juicy(sharedMesh(cutShared('wtracer', 0.7, 0.7, (ctx, P) => { starPath(ctx, 5, 0.33, 0.15); paint(ctx, P, '#f2c14e'); }, { res: 120, rim: 0.06 })), 0.0001);
-  tracer.mesh.position.z = 0.3; g.add(tracer.mesh);
+  const tracer = new Juicy(sharedMesh(cutShared('wtracer', 0.8, 0.8, (ctx, P) => { starPath(ctx, 5, 0.38, 0.17); paint(ctx, P, '#f2c14e'); }, { res: 120, rim: 0.06 })));
+  tracer.sc.v = tracer.sc.t = 0.0001; tracer.mesh.position.z = 0.3; g.add(tracer.mesh);
   scene.add(g);
   return { group: g, sh, ov, om, marker, tracer, bg: new Juicy(bg) };
 }
@@ -91,7 +91,11 @@ function drawOverlay() {
   b.ov.redraw((ctx, P) => {
     ctx.lineCap = 'round'; ctx.lineJoin = 'round';
     for (const st of Wr.strokes) { path(ctx, st.pts); ctx.strokeStyle = 'rgba(122,93,73,.2)'; ctx.lineWidth = st.dot ? 0.9 : GUIDE_W; ctx.stroke(); }
-    for (const st of Wr.strokes) { path(ctx, st.pts); ctx.setLineDash([0.12, 0.16]); ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = 0.05; ctx.stroke(); ctx.setLineDash([]); }
+    if (Wr.demo) Wr.strokes.forEach((st, i) => { // the "show me" trail
+      if (i > Wr.demo.i) return;
+      if (st.dot) { ctx.beginPath(); ctx.arc(st.pts[0][0], -st.pts[0][1], 0.3, 0, Math.PI * 2); ctx.fillStyle = 'rgba(242,193,78,.8)'; ctx.fill(); return; }
+      path(ctx, st.pts, i < Wr.demo.i ? Infinity : Wr.demo.s, st); ctx.strokeStyle = 'rgba(242,193,78,.75)'; ctx.lineWidth = INK_W; ctx.stroke();
+    });
     Wr.strokes.forEach((st, i) => {
       if (i > Wr.cur) return;
       const upto = i < Wr.cur ? Infinity : Wr.prog;
@@ -105,7 +109,7 @@ function drawOverlay() {
       const [x, y] = st.pts[0]; ctx.beginPath(); ctx.arc(x, -y, 0.2, 0, Math.PI * 2); ctx.fillStyle = 'rgba(122,93,73,.35)'; ctx.fill();
       text(ctx, P, String(i + 1), x, -y, 0.24, '#fffaf0', { shadow: false });
     });
-    const st = Wr.strokes[Wr.cur]; if (!st || Wr.busyDone) return;
+    const st = Wr.strokes[Wr.cur]; if (!st || Wr.busyDone || Wr.demo) return;
     // arrows showing which way to go
     if (!st.dot) for (let k = 1; k <= 3; k++) {
       const s = Wr.prog + k * 0.9; if (s > st.len - 0.2) break;
@@ -138,14 +142,17 @@ function buildCard() {
   const sh = softShadow(w, h); sh.position.set(0.3, -0.4, -0.35); g.add(sh, m); scene.add(g);
   Wr.card = { group: g, mesh: m, sh, ct, w, h, tall, j: new Juicy(m) };
   Wr.buttons.forEach(j => j.kill()); Wr.buttons = [];
-  [-1, 1].forEach((d, i) => {
-    const bm = sharedMesh(cutShared('wnav' + d, 1.3, 1.3, (ctx, P) => {
-      ctx.beginPath(); ctx.arc(0, 0, 0.6, 0, Math.PI * 2); paint(ctx, P, '#f2c14e');
-      if (!P.rim) { ctx.beginPath(); ctx.moveTo(-0.15 * d, -0.25); ctx.lineTo(0.2 * d, 0); ctx.lineTo(-0.15 * d, 0.25); ctx.strokeStyle = INK; ctx.lineWidth = 0.12; ctx.stroke(); }
+  [-1, 0, 1].forEach((d, i) => {
+    const show = d === 0, r = show ? 0.75 : 0.6;
+    const bm = sharedMesh(cutShared('wnav' + d, 1.7, 1.7, (ctx, P) => {
+      ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); paint(ctx, P, show ? '#2f9e97' : '#f2c14e');
+      if (P.rim) return;
+      if (show) { ctx.beginPath(); ctx.moveTo(-0.2, -0.32); ctx.lineTo(0.34, 0); ctx.lineTo(-0.2, 0.32); ctx.closePath(); ctx.fillStyle = '#fffaf0'; ctx.fill(); }
+      else { ctx.beginPath(); ctx.moveTo(-0.15 * d, -0.25); ctx.lineTo(0.2 * d, 0); ctx.lineTo(-0.15 * d, 0.25); ctx.strokeStyle = INK; ctx.lineWidth = 0.12; ctx.stroke(); }
     }, { res: 110, rim: 0.07 }));
-    bm.userData.kind = 'wnav'; bm.userData.dir = d;
-    bm.position.set(tall ? S.L.side[0] + 3.2 + i * 1.5 : S.L.side[0] + d * 0.9, tall ? S.L.side[1] - 0.3 : S.L.side[1] - 2.6, 0.3);
-    scene.add(bm); Wr.buttons.push(new Juicy(bm));
+    bm.userData.kind = show ? 'wshow' : 'wnav'; bm.userData.dir = d;
+    bm.position.set(tall ? S.L.side[0] + 2.9 + i * 1.25 : S.L.side[0] + d * 1.55, tall ? S.L.side[1] - 0.3 : S.L.side[1] - 2.6, 0.3);
+    scene.add(bm); Wr.buttons.push(new Juicy(bm, tall ? 0.85 : 1));
   });
   drawCard();
 }
@@ -171,16 +178,29 @@ function setPrompt(fn) { Wr.promptFn = fn; say(fn()); }
 async function demo() {
   const b = Wr.board; if (!b) return;
   const my = Wr.round, t = b.tracer;
-  t.sc.t = 1;
-  for (const st of Wr.strokes) {
+  const [x0, y0] = Wr.strokes[0].pts[0]; t.mesh.position.set(x0, y0, 0.3); t.sc.t = 1; t.pop(0.5);
+  await wait(0.35);
+  for (let i = 0; i < Wr.strokes.length; i++) {
+    const st = Wr.strokes[i];
     if (my !== Wr.round || !Wr.board) return;
-    if (st.dot) { t.mesh.position.set(st.pts[0][0], st.pts[0][1], 0.3); t.pop(0.6); sfx.tap(); await wait(0.4); continue; }
-    await tween(Math.max(0.35, st.len / 4.5), k => { const [x, y] = pointAt(st, k * st.len); t.mesh.position.set(x, y, 0.3); t.extra = k * 6; }, ease.inOutSine);
-    sfx.dot(Wr.strokes.indexOf(st) + 2); await wait(0.2);
+    Wr.demo = { i, s: 0 };
+    if (st.dot) { t.mesh.position.set(st.pts[0][0], st.pts[0][1], 0.3); t.pop(0.6); sfx.tap(); Wr.dirty = true; await wait(0.5); continue; }
+    const [sx, sy] = st.pts[0]; t.mesh.position.set(sx, sy, 0.3); t.pop(0.4); sfx.tap(); await wait(0.25);
+    await tween(Math.max(0.6, st.len / 3.2), k => { const [x, y] = pointAt(st, k * st.len); t.mesh.position.set(x, y, 0.3); t.extra = k * 6; Wr.demo = { i, s: k * st.len }; Wr.dirty = true; }, ease.inOutSine);
+    sfx.dot(i + 2); await wait(0.3);
   }
-  t.sc.t = 0.0001;
+  await wait(0.7);
+  t.sc.t = 0.0001; Wr.demo = null; Wr.dirty = true;
 }
-async function startLetter(auto = true) {
+async function showMe() {
+  if (!Wr.board || Wr.busy) return;
+  const tok = Wr.round; Wr.busy = true; drawOverlay();
+  say(tr('wrWatch'));
+  await demo();
+  if (tok !== Wr.round) return;
+  Wr.busy = false; S.lastAct = S.time; setPrompt(() => tr('wrStart', Wr.ch));
+}
+async function startLetter() {
   const tok = ++Wr.round;
   Wr.busy = true; Wr.busyDone = false; Wr.help = 0; Wr.mistakes = 0; Wr.cur = 0; Wr.prog = 0; Wr.warned = Wr.startWarned = false; S.nudged = false; wiggleHelp(false);
   Wr.ch = letters()[Wr.idx]; Wr.strokes = buildStrokes(Wr.ch);
@@ -192,12 +212,11 @@ async function startLetter(auto = true) {
   if (tok !== Wr.round) return;
   drawOverlay(); drawCard();
   setPrompt(() => tr('wrStart', Wr.ch));
-  if (auto) { await wait(1.2); if (tok !== Wr.round) return; say(tr('wrWatch')); await demo(); if (tok !== Wr.round) return; setPrompt(() => tr('wrStart', Wr.ch)); }
   Wr.busy = false; S.lastAct = S.time;
 }
 function completeStroke() {
   const st = Wr.strokes[Wr.cur], end = st.pts[st.pts.length - 1];
-  Wr.prog = st.len; Wr.grabbing = false;
+  Wr.prog = st.len; Wr.grabbing = false; lastQ = null;
   burst(Wr.board.group.localToWorld(V3(end[0], end[1], 0.4)), 10, { colors: [INKS[Wr.cur % INKS.length], '#fffaf0', '#f2c14e'], speed: 2.4, up: 3, z: 1, size: 0.6 });
   sfx.good(Wr.cur + 2);
   if (Wr.cur + 1 < Wr.strokes.length) {
@@ -220,41 +239,57 @@ function wrongStart() {
   if (!Wr.startWarned) { Wr.startWarned = true; Wr.mistakes++; recordMistake('write', 'start'); }
   sfx.bad(); owlTilt(); say(tr('wrStartDot')); Wr.board.bg.punch(0.15);
 }
-// finger at q (board coordinates) while drawing the current stroke
-let lastTick = 0;
+// finger at q (board coordinates) while drawing the current stroke; fast moves are split into small steps
+let lastTick = 0, lastQ = null;
 function advance(st, q) {
   if (!Wr.grabbing || !Wr.board) return;
+  const from = lastQ || q, n = Math.max(1, Math.ceil(from.distanceTo(q) / 0.15));
+  for (let k = 1; k <= n && Wr.grabbing; k++) step(st, from.clone().lerp(q, k / n));
+  lastQ = q.clone();
+}
+function step(st, q) {
   const pr = project(q, st, Wr.prog - 0.3, Wr.prog + 1.1);
   if (pr.d < TOL && pr.s > Wr.prog) {
     Wr.prog = pr.s; Wr.dirty = true;
     if (Wr.prog - lastTick > 0.5) { lastTick = Wr.prog; sfx.dot(Math.floor(Wr.prog * 2) % 10); }
-    if (Wr.prog >= st.len - 0.3) completeStroke();
+    if (Wr.prog >= st.len - 0.4) completeStroke();
   } else if (pr.d > TOL * 2.2 && !Wr.warned) {
     Wr.warned = true; Wr.mistakes++; recordMistake('write', 'path'); sfx.bad(); owlTilt(); say(tr('wrStay'));
   }
 }
-// finger goes down at l: start (or resume) the current stroke, or explain where to start
+// finger goes down at l: every line starts at its green dot and is drawn in one go
 function begin(l) {
   const st = Wr.strokes[Wr.cur], [sx, sy] = st.pts[0]; S.lastAct = S.time;
   if (st.dot) { if (Math.hypot(l.x - sx, l.y - sy) < START_TOL + 0.1) { Wr.prog = 1; completeStroke(); } else wrongStart(); return null; }
-  const [px, py] = pointAt(st, Wr.prog);
-  const fromStart = Wr.prog === 0 && Math.hypot(l.x - sx, l.y - sy) < START_TOL, resume = Wr.prog > 0 && Math.hypot(l.x - px, l.y - py) < TOL * 1.4;
-  if (!fromStart && !resume) { wrongStart(); return null; }
-  Wr.grabbing = true; lastTick = Wr.prog; sfx.pick();
+  if (Math.hypot(l.x - sx, l.y - sy) >= START_TOL) { wrongStart(); return null; }
+  Wr.prog = 0; Wr.grabbing = true; lastTick = 0; lastQ = l.clone(); sfx.pick();
   return st;
+}
+// the finger was lifted: if the line isn't finished, it rolls back to its dot
+function lift() {
+  if (!Wr.grabbing) return;
+  Wr.grabbing = false; lastQ = null;
+  if (Wr.prog <= 0) return;
+  const st = Wr.strokes[Wr.cur];
+  if (st && Wr.prog >= st.len - 0.9) { completeStroke(); return; } // lifted just a finger's width before the end: that counts
+  const p0 = Wr.prog, tok = Wr.round, cur = Wr.cur;
+  sfx.undot(3); owlTilt(); say(tr('wrKeep'));
+  tween(0.35, k => { if (tok === Wr.round && cur === Wr.cur && !Wr.grabbing) { Wr.prog = p0 * (1 - k); Wr.dirty = true; } }, ease.inOutSine);
 }
 function pointerDown(e) {
   const b = Wr.board; if (!b || Wr.busy) return;
   const st = begin(b.group.worldToLocal(atZ(0.2))); if (!st) return;
-  startGrab(e, pt => advance(st, Wr.board ? Wr.board.group.worldToLocal(pt) : pt), () => { Wr.grabbing = false; });
+  startGrab(e, pt => advance(st, Wr.board ? Wr.board.group.worldToLocal(pt) : pt), lift);
 }
 // test hook: trace the current stroke (reverse = start from the wrong end)
 Wr.simulate = (reverse = false, frac = 1) => {
   const st = Wr.strokes[Wr.cur]; if (!st || Wr.busy) return;
   const pts = reverse ? st.pts.slice().reverse() : st.pts, s0 = new THREE.Vector3(pts[0][0] + 0.1, pts[0][1] - 0.1, 0);
   if (!begin(s0)) return;
-  for (let s = 0; s <= st.len * frac && Wr.grabbing; s += 0.15) { const [x, y] = pointAt(st, s); advance(st, new THREE.Vector3(x + 0.12, y + 0.08, 0)); }
-  Wr.grabbing = false;
+  // big jumps on purpose: the interpolation must keep the ink going
+  const end = st.len * frac;
+  for (let s = 0; Wr.grabbing; s = Math.min(end, s + 0.6)) { const [x, y] = pointAt(st, s); advance(st, new THREE.Vector3(x + 0.12, y + 0.08, 0)); if (s >= end) break; }
+  lift();
 };
 
 /* ---------- game object ---------- */
@@ -286,14 +321,14 @@ export const writeGame = {
     if (!o) return;
     const k = o.userData.kind;
     if (k === 'writeBoard') pointerDown(e);
+    else if (k === 'wshow') { o.userData.j.punch(0.4); o.userData.j.pop(0.3); sfx.tap(); showMe(); }
     else if (k === 'wnav') { const j = o.userData.j; j.punch(0.4); sfx.tap(); Wr.idx = (Wr.idx + o.userData.dir + 26) % 26; store.write = store.write || {}; store.write[Wr.level] = Wr.idx; save(); startLetter(); }
     else if (k === 'wcard') { Wr.card.j.pop(0.3); const pic = pictureFor(Wr.ch); speak(pic ? `${Wr.ch}. ${pic.word}` : Wr.ch); }
   },
   help() {
     if (Wr.busy || !Wr.board) return;
     Wr.help = Math.min(2, Wr.help + 1);
-    say(tr('wrWatch')); Wr.busy = true;
-    const tok = Wr.round; demo().then(() => { if (tok === Wr.round) { Wr.busy = false; setPrompt(() => tr('wrStart', Wr.ch)); } });
+    showMe();
   },
   prompt: () => Wr.promptFn(),
   idle: () => !Wr.busy && !!Wr.board && !Wr.grabbing,
