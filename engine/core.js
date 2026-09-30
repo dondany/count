@@ -7,6 +7,7 @@ import { CONF_COLORS } from './paper.js';
 export const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.localClippingEnabled = true; // the zoomable Europe map is clipped to its window
 document.getElementById('app').appendChild(renderer.domElement);
 export const scene = new THREE.Scene(); scene.background = new THREE.Color('#fbd9b0');
 export const camera = new THREE.PerspectiveCamera(30, 1, 1, 300); camera.position.set(0, 0, 40);

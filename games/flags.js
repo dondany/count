@@ -2,7 +2,7 @@
 import * as THREE from 'three';
 import { rand, rint, pick, lerp, Juicy, tween, wait, ease, unjuice } from '../engine/util.js';
 import { INK, cutTex, cutShared, sharedMesh, paperMat, paint, text, segs, rr, tornRect, softShadow, disposeMesh } from '../engine/paper.js';
-import { scene, S, burst, drag } from '../engine/core.js';
+import { scene, S, burst, drag, startGrab, setNDC, atZ, renderer } from '../engine/core.js';
 import { sfx } from '../engine/audio.js';
 import { tr, lang, contName, cap1 } from '../engine/i18n.js';
 import { say, owlTilt, owlCheer } from '../engine/pip.js';
@@ -12,7 +12,8 @@ import { celebrate, wiggleHelp } from '../engine/ui.js';
 import { recordMistake } from '../engine/stats.js';
 import { COUNTRIES, FLAGS } from './flagsData.js';
 import { store, save } from '../engine/store.js';
-import { EU_INFO, EU_IDS, MAP_W as EU_W, MAP_H as EU_H, geo, buildEurope, disposeEurope, paintCountry, showGlow, countryAt } from './europeMap.js';
+import { EU_INFO, EU_IDS, MAP_W as EU_W, MAP_H as EU_H, geo, buildEurope, disposeEurope, paintCountry, showGlow, countryAt,
+  inWindow, zoomTo, zoomLevel, panBy, updateEurope, highlight } from './europeMap.js';
 import { MW, toMap, pinMat, pinRingMat, poleMat, tagMat, buildMap, disposeMap, relabelMap } from './worldMap.js';
 
 const V3 = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
@@ -110,7 +111,7 @@ async function startRound() {
   const tok = ++Fl.round;
   Fl.busy = true; Fl.problemWrong = 0; Fl.placed = 0; setTrayGlow(null); wiggleHelp(false); S.nudged = false;
   if (Fl.level === 4) return startEurope(tok);
-  if (Fl.eu) { const old = Fl.eu, og = old.group, sx = og.position.x; Fl.eu = null; tween(0.5, k => { og.position.x = sx - k * 30; }, ease.inCubic).then(() => disposeEurope(old)); }
+  if (Fl.eu) { const old = Fl.eu, og = old.root, sx = og.position.x; Fl.eu = null; tween(0.5, k => { og.position.x = sx - k * 30; }, ease.inCubic).then(() => disposeEurope(old)); }
   if (Fl.map) { const old = Fl.map, og = old.group, sx = og.position.x; Fl.map = null; tween(0.5, k => { og.position.x = sx - k * 30; og.rotation.z = k * 0.4; }, ease.inCubic).then(() => disposeMap(old)); }
   Fl.pins = [];
   const map = Fl.map = buildMap();
@@ -200,13 +201,14 @@ async function startEurope(tok) {
   if (!left.length) { store.europe = []; save(); left = EU_IDS.slice(); if (Fl.eu) { disposeEurope(Fl.eu); Fl.eu = null; } say(tr('euAll')); owlCheer(); }
   buildCard(); setTray(null);
   if (!Fl.eu) {
-    const E = Fl.eu = buildEurope(), sc = euScale(); E.group.scale.setScalar(sc);
+    const E = Fl.eu = buildEurope(), sc = euScale(); E.root.scale.setScalar(sc);
     painted().forEach(id => paintCountry(E, id, false));
     sfx.whoosh();
-    await tween(0.7, k => E.group.position.set(S.L.main[0], euY() + (1 - k) * 15, 0), ease.outBack);
+    await tween(0.7, k => E.root.position.set(S.L.main[0], euY() + (1 - k) * 15, 0), ease.outBack);
     if (tok !== Fl.round) return;
     sfx.snap(); S.shake = Math.max(S.shake, 0.2);
   }
+  zoomTo(Fl.eu, 1);
   // five countries per round, at most one tiny one (they're the hardest to hit)
   const tiny = id => geo(id).tiny, q = [];
   for (const id of shuffle(left)) { if (q.length < 5 && (!tiny(id) || !q.some(tiny))) q.push(id); }
@@ -223,15 +225,20 @@ function nextEuStep(tok) {
   Fl.busy = false; S.lastAct = S.time;
 }
 function euLocal(pt) { return Fl.eu.group.worldToLocal(pt.clone()); }
+// small countries get a zoom-in with the hint, so they're easy to reach
+function euHint() {
+  const g = geo(Fl.cur.id); showGlow(Fl.eu, Fl.cur.id);
+  if (g.area < 6) zoomTo(Fl.eu, g.tiny ? 3.5 : g.area < 2 ? 2.8 : 2, { x: g.label[0], y: g.label[1] }, true);
+}
 function euDrop(p) {
-  const id = countryAt(Fl.eu, euLocal(drag.pt), Fl.cur.id);
+  const id = inWindow(Fl.eu, drag.pt) ? countryAt(Fl.eu, euLocal(drag.pt), Fl.cur.id) : null;
   if (id === Fl.cur.id) return euSolved(p);
   flyHome(p);
   if (!id) return;
   const c = Fl.eu.countries[id]; (c.painted || c.j).pop(0.5); if (c.marker) c.marker.pop(0.6);
   Fl.problemWrong++; Fl.stepWrong++; recordMistake('flags', 'europe'); sfx.bad(); owlTilt();
   setPrompt(() => tr('euNo', nm(EU_INFO[id])));
-  if (Fl.stepWrong >= 2) { showGlow(Fl.eu, Fl.cur.id); wiggleHelp(true); }
+  if (Fl.stepWrong >= 2) { euHint(); wiggleHelp(true); }
 }
 async function euSolved(p) {
   const tok = Fl.round, c = Fl.cur, g = geo(c.id), E = Fl.eu;
@@ -257,7 +264,7 @@ async function win() {
   const ti = Math.floor(Math.random() * 4);
   setPrompt(() => tr('flWin', Fl.placed, tr('winTail')[ti]));
   Fl.pins.forEach((pin, i) => wait(0.08 * i).then(() => { if (pin.planted) { pin.planted.pop(0.6); pin.planted.punch(0.4); } }));
-  await celebrate({ center: (Fl.eu || Fl.map).group.localToWorld(V3(0, 0.2, 0)), nStars, gameId: 'flags', level: Fl.level, wrong: Fl.problemWrong });
+  await celebrate({ center: (Fl.eu ? Fl.eu.root : Fl.map.group).localToWorld(V3(0, 0.2, 0)), nStars, gameId: 'flags', level: Fl.level, wrong: Fl.problemWrong });
   if (tok !== Fl.round) return;
   await wait(0.4);
   if (tok !== Fl.round) return;
@@ -270,6 +277,13 @@ function pending() {
   if (Fl.level === 1 && Fl.curPin && !Fl.curPin.planted) return { mesh: Fl.curPin.head.mesh, r: 0.7 };
   return null;
 }
+// mouse wheel zooms the Europe map on computers
+renderer.domElement.addEventListener('wheel', e => {
+  if (!Fl.eu) return;
+  setNDC(e); const pt = atZ(0.12); if (!inWindow(Fl.eu, pt)) return;
+  e.preventDefault();
+  zoomTo(Fl.eu, zoomLevel(Fl.eu) * (e.deltaY < 0 ? 1.2 : 1 / 1.2), euLocal(pt));
+}, { passive: false });
 export const flagsState = Fl;
 export const flagsGame = {
   id: 'flags',
@@ -281,16 +295,13 @@ export const flagsGame = {
   adopt(l) { Fl.level = this.level = l; },
   relayout() {
     if (Fl.map) Fl.map.group.position.set(S.L.main[0], S.L.main[1] + 0.3, 0);
-    if (Fl.eu) { Fl.eu.group.position.set(S.L.main[0], euY(), 0); Fl.eu.group.scale.setScalar(euScale()); }
+    if (Fl.eu) { Fl.eu.root.position.set(S.L.main[0], euY(), 0); Fl.eu.root.scale.setScalar(euScale()); }
     const st = Fl.card && Fl.card.state; buildCard(); drawCard(st);
   },
   update(dt, t) {
     if (Fl.eu) {
-      const hov = drag.piece && drag.hover && drag.hover.eu ? countryAt(Fl.eu, euLocal(drag.pt), Fl.cur && Fl.cur.id) : null;
-      for (const [id, c] of Object.entries(Fl.eu.countries)) {
-        const j = c.painted || c.j; j.sc.t = id === hov ? 1.06 : 1;
-        if (c.marker) c.marker.sc.t = id === hov ? 1.5 : 1;
-      }
+      updateEurope(Fl.eu, dt);
+      highlight(Fl.eu, drag.piece && drag.hover && drag.hover.eu ? countryAt(Fl.eu, euLocal(drag.pt), Fl.cur && Fl.cur.id) : null);
       if (Fl.eu.glowFor) Fl.eu.glow.sc.t = 1 + 0.1 * Math.sin(t * 6);
     }
     if (!Fl.map) return;
@@ -302,11 +313,18 @@ export const flagsGame = {
       const m = pinRingMat(hov).mat; if (pin.ring.mesh.material !== m) pin.ring.mesh.material = m;
     }
   },
-  pointer(o) {
-    if (o && o.userData.kind === 'euCountry' && Fl.eu) {
-      const id = o.userData.id, c = Fl.eu.countries[id], info = EU_INFO[id];
-      (c.painted || c.j).pop(0.4); if (c.marker) c.marker.pop(0.5); sfx.tap();
-      say(c.painted ? `${cap1(nm(info))} — ${capOf(info)}` : cap1(nm(info)), { hop: false });
+  pointer(o, e) {
+    const k0 = o && o.userData.kind;
+    if (Fl.eu && k0 === 'euZoom') { const j = o.userData.j; j.punch(0.4); sfx.tap(); zoomTo(Fl.eu, zoomLevel(Fl.eu) * (o.userData.dir > 0 ? 1.8 : 1 / 1.8)); return; }
+    if (Fl.eu && (k0 === 'euCountry' || k0 === 'euSea')) {
+      // drag the map to pan it (when zoomed in); a tap on a country says its name
+      let last = atZ(0.2), moved = 0;
+      startGrab(e, pt => { if (!Fl.eu) return; const dx = pt.x - last.x, dy = pt.y - last.y; moved += Math.hypot(dx, dy); if (zoomLevel(Fl.eu) > 1.01) panBy(Fl.eu, dx, dy); last = pt; }, () => {
+        if (moved > 0.25 || k0 !== 'euCountry' || !Fl.eu) return;
+        const id = o.userData.id, c = Fl.eu.countries[id], info = EU_INFO[id];
+        (c.painted || c.j).pop(0.2); if (c.marker) c.marker.pop(0.5); sfx.tap();
+        say(c.painted ? `${cap1(nm(info))} — ${capOf(info)}` : cap1(nm(info)), { hop: false });
+      });
       return;
     }
     if (!o || !Fl.map) return;
@@ -317,7 +335,7 @@ export const flagsGame = {
   help() {
     if (Fl.level === 4) {
       if (Fl.busy || !Fl.eu || !Fl.cur) return;
-      showGlow(Fl.eu, Fl.cur.id); say(tr('euHint', nm(Fl.cur))); return;
+      euHint(); say(tr('euHint', nm(Fl.cur))); return;
     }
     if (Fl.busy || !Fl.map) return;
     Fl.help = Math.min(2, Fl.help + 1);
@@ -336,7 +354,7 @@ export const flagsGame = {
   idle: () => !Fl.busy && !!(Fl.map || Fl.eu),
   canDrag: () => !Fl.busy && !!(Fl.map || Fl.eu),
   dragOpts: () => ({
-    targets: () => Fl.level === 4 ? (Fl.eu ? [{ eu: true, j: Fl.eu.sj, hit: pt => countryAt(Fl.eu, euLocal(pt), Fl.cur && Fl.cur.id) !== null }] : []) : !Fl.map ? [] : Fl.level === 2 ? Fl.map.targets : Fl.level === 1 ? (Fl.curPin && !Fl.curPin.planted ? [Fl.curPin] : []) : Fl.pins.filter(p => !p.planted),
+    targets: () => Fl.level === 4 ? (Fl.eu ? [{ eu: true, hit: pt => inWindow(Fl.eu, pt) && countryAt(Fl.eu, euLocal(pt), Fl.cur && Fl.cur.id) !== null }] : []) : !Fl.map ? [] : Fl.level === 2 ? Fl.map.targets : Fl.level === 1 ? (Fl.curPin && !Fl.curPin.planted ? [Fl.curPin] : []) : Fl.pins.filter(p => !p.planted),
     onDrop,
   }),
   onLang() {
