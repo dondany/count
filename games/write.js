@@ -17,7 +17,8 @@ import { PICS, ANIMALS } from './pictures.js';
 const V3 = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const ABC = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 const INKS = ['#e8574a', '#2f9e97', '#3f7fc1', '#d9508f', '#e9a825'];
-const TOL = 0.55, START_TOL = 0.85, GUIDE_W = 0.62, INK_W = 0.46;
+// generous for small fingers: the finger may wander ~a fingertip from the centre line
+const TOL = 0.95, START_TOL = 1.2, GUIDE_W = 1.0, INK_W = 0.72;
 const Wr = {
   level: 1, idx: 0, ch: 'A', strokes: [], cur: 0, prog: 0, warned: false, startWarned: false, grabbing: false,
   busy: true, round: 0, help: 0, mistakes: 0, board: null, card: null, buttons: [], dirty: false, marker: null, promptFn: () => '',
@@ -100,27 +101,27 @@ function drawOverlay() {
       if (i > Wr.cur) return;
       const upto = i < Wr.cur ? Infinity : Wr.prog;
       if (upto <= 0) return;
-      if (st.dot) { ctx.beginPath(); ctx.arc(st.pts[0][0], -st.pts[0][1], 0.3, 0, Math.PI * 2); ctx.fillStyle = INKS[i % INKS.length]; ctx.fill(); return; }
+      if (st.dot) { ctx.beginPath(); ctx.arc(st.pts[0][0], -st.pts[0][1], 0.42, 0, Math.PI * 2); ctx.fillStyle = INKS[i % INKS.length]; ctx.fill(); return; }
       path(ctx, st.pts, upto, st); ctx.strokeStyle = INKS[i % INKS.length]; ctx.lineWidth = INK_W; ctx.stroke();
     });
     // later strokes: small grey numbers at their starts
     Wr.strokes.forEach((st, i) => {
       if (i <= Wr.cur) return;
-      const [x, y] = st.pts[0]; ctx.beginPath(); ctx.arc(x, -y, 0.2, 0, Math.PI * 2); ctx.fillStyle = 'rgba(122,93,73,.35)'; ctx.fill();
-      text(ctx, P, String(i + 1), x, -y, 0.24, '#fffaf0', { shadow: false });
+      const [x, y] = st.pts[0]; ctx.beginPath(); ctx.arc(x, -y, 0.28, 0, Math.PI * 2); ctx.fillStyle = 'rgba(122,93,73,.4)'; ctx.fill();
+      text(ctx, P, String(i + 1), x, -y, 0.32, '#fffaf0', { shadow: false });
     });
     const st = Wr.strokes[Wr.cur]; if (!st || Wr.busyDone || Wr.demo) return;
     // arrows showing which way to go
     if (!st.dot) for (let k = 1; k <= 3; k++) {
-      const s = Wr.prog + k * 0.9; if (s > st.len - 0.2) break;
+      const s = Wr.prog + 0.3 + k * 0.95; if (s > st.len - 0.2) break;
       const [x1, y1] = pointAt(st, s - 0.12), [x2, y2] = pointAt(st, s + 0.12), a = Math.atan2(-(y2 - y1), x2 - x1);
-      ctx.save(); ctx.translate(x2, -y2); ctx.rotate(a); ctx.beginPath(); ctx.moveTo(-0.14, -0.13); ctx.lineTo(0.06, 0); ctx.lineTo(-0.14, 0.13);
-      ctx.strokeStyle = 'rgba(111,174,82,.9)'; ctx.lineWidth = 0.07; ctx.stroke(); ctx.restore();
+      ctx.save(); ctx.translate(x2, -y2); ctx.rotate(a); ctx.beginPath(); ctx.moveTo(-0.2, -0.19); ctx.lineTo(0.08, 0); ctx.lineTo(-0.2, 0.19);
+      ctx.strokeStyle = 'rgba(111,174,82,.9)'; ctx.lineWidth = 0.1; ctx.stroke(); ctx.restore();
     }
     const [sx, sy] = Wr.prog > 0 ? pointAt(st, Wr.prog) : st.pts[0];
-    ctx.beginPath(); ctx.arc(sx, -sy, 0.34, 0, Math.PI * 2); ctx.fillStyle = '#6fae52'; ctx.fill();
-    ctx.lineWidth = 0.06; ctx.strokeStyle = '#fffaf0'; ctx.stroke();
-    text(ctx, P, String(Wr.cur + 1), sx, -sy, 0.34, '#fffaf0', { shadow: false });
+    ctx.beginPath(); ctx.arc(sx, -sy, 0.48, 0, Math.PI * 2); ctx.fillStyle = '#6fae52'; ctx.fill();
+    ctx.lineWidth = 0.08; ctx.strokeStyle = '#fffaf0'; ctx.stroke();
+    text(ctx, P, String(Wr.cur + 1), sx, -sy, 0.46, '#fffaf0', { shadow: false });
   });
   Wr.dirty = false;
 }
@@ -179,17 +180,20 @@ async function demo() {
   const b = Wr.board; if (!b) return;
   const my = Wr.round, t = b.tracer;
   const [x0, y0] = Wr.strokes[0].pts[0]; t.mesh.position.set(x0, y0, 0.3); t.sc.t = 1; t.pop(0.5);
-  await wait(0.35);
+  await wait(0.12);
   for (let i = 0; i < Wr.strokes.length; i++) {
     const st = Wr.strokes[i];
     if (my !== Wr.round || !Wr.board) return;
     Wr.demo = { i, s: 0 };
-    if (st.dot) { t.mesh.position.set(st.pts[0][0], st.pts[0][1], 0.3); t.pop(0.6); sfx.tap(); Wr.dirty = true; await wait(0.5); continue; }
-    const [sx, sy] = st.pts[0]; t.mesh.position.set(sx, sy, 0.3); t.pop(0.4); sfx.tap(); await wait(0.25);
-    await tween(Math.max(0.6, st.len / 3.2), k => { const [x, y] = pointAt(st, k * st.len); t.mesh.position.set(x, y, 0.3); t.extra = k * 6; Wr.demo = { i, s: k * st.len }; Wr.dirty = true; }, ease.inOutSine);
-    sfx.dot(i + 2); await wait(0.3);
+    if (st.dot) { t.mesh.position.set(st.pts[0][0], st.pts[0][1], 0.3); t.pop(0.8); sfx.tap(); Wr.dirty = true; await wait(0.25); continue; }
+    const [sx, sy] = st.pts[0]; t.mesh.position.set(sx, sy, 0.3); t.pop(0.5); sfx.tap(); await wait(0.08);
+    // a quick, lively swoosh along the line (about 7 units a second) that ends in a little sparkle
+    await tween(Math.max(0.3, st.len / 7), k => { const [x, y] = pointAt(st, k * st.len); t.mesh.position.set(x, y, 0.3); t.extra = k * 8; Wr.demo = { i, s: k * st.len }; Wr.dirty = true; }, ease.inOutSine);
+    const [ex, ey] = pointAt(st, st.len);
+    burst(Wr.board.group.localToWorld(V3(ex, ey, 0.4)), 8, { colors: ['#f2c14e', '#ffe27a', '#fffaf0'], speed: 2.2, up: 2.5, z: 1, size: 0.5 });
+    t.punch(0.5); sfx.dot(i + 3); await wait(0.12);
   }
-  await wait(0.7);
+  await wait(0.4);
   t.sc.t = 0.0001; Wr.demo = null; Wr.dirty = true;
 }
 async function showMe() {
@@ -248,12 +252,12 @@ function advance(st, q) {
   lastQ = q.clone();
 }
 function step(st, q) {
-  const pr = project(q, st, Wr.prog - 0.3, Wr.prog + 1.1);
+  const pr = project(q, st, Wr.prog - 0.3, Wr.prog + 1.3);
   if (pr.d < TOL && pr.s > Wr.prog) {
     Wr.prog = pr.s; Wr.dirty = true;
     if (Wr.prog - lastTick > 0.5) { lastTick = Wr.prog; sfx.dot(Math.floor(Wr.prog * 2) % 10); }
-    if (Wr.prog >= st.len - 0.4) completeStroke();
-  } else if (pr.d > TOL * 2.2 && !Wr.warned) {
+    if (Wr.prog >= st.len - 0.5) completeStroke();
+  } else if (pr.d > TOL * 1.7 && !Wr.warned) {
     Wr.warned = true; Wr.mistakes++; recordMistake('write', 'path'); sfx.bad(); owlTilt(); say(tr('wrStay'));
   }
 }
@@ -282,13 +286,13 @@ function pointerDown(e) {
   startGrab(e, pt => advance(st, Wr.board ? Wr.board.group.worldToLocal(pt) : pt), lift);
 }
 // test hook: trace the current stroke (reverse = start from the wrong end)
-Wr.simulate = (reverse = false, frac = 1) => {
+Wr.simulate = (reverse = false, frac = 1, off = 0.12) => {
   const st = Wr.strokes[Wr.cur]; if (!st || Wr.busy) return;
   const pts = reverse ? st.pts.slice().reverse() : st.pts, s0 = new THREE.Vector3(pts[0][0] + 0.1, pts[0][1] - 0.1, 0);
   if (!begin(s0)) return;
   // big jumps on purpose: the interpolation must keep the ink going
   const end = st.len * frac;
-  for (let s = 0; Wr.grabbing; s = Math.min(end, s + 0.6)) { const [x, y] = pointAt(st, s); advance(st, new THREE.Vector3(x + 0.12, y + 0.08, 0)); if (s >= end) break; }
+  for (let s = 0; Wr.grabbing; s = Math.min(end, s + 0.6)) { const [x, y] = pointAt(st, s); advance(st, new THREE.Vector3(x + off, y + off * Math.sin(s * 3), 0)); if (s >= end) break; }
   lift();
 };
 
